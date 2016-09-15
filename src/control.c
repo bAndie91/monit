@@ -489,6 +489,7 @@ boolean_t control_service(const char *S, Action_Type A) {
                 case Action_Monitor:
                         /* We only enable monitoring of this service and all prerequisite services. Chain of services which depends on this service keeps its state */
                         _doMonitor(s);
+                        s->mode |= Monitor_Forced;
                         break;
 
                 case Action_Unmonitor:

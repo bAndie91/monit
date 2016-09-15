@@ -997,17 +997,17 @@ static boolean_t _checkSkip(Service_T s) {
         if (s->every.type == Every_SkipCycles) {
                 s->every.spec.cycle.counter++;
                 if (s->every.spec.cycle.counter < s->every.spec.cycle.number) {
-                        s->monitor |= Monitor_Waiting;
+                        // s->monitor |= Monitor_Waiting;
                         DEBUG("'%s' test skipped as current cycle (%d) < every cycle (%d) \n", s->name, s->every.spec.cycle.counter, s->every.spec.cycle.number);
                         return true;
                 }
                 s->every.spec.cycle.counter = 0;
         } else if (s->every.type == Every_Cron && ! _incron(s, now)) {
-                s->monitor |= Monitor_Waiting;
+                // s->monitor |= Monitor_Waiting;
                 DEBUG("'%s' test skipped as current time (%lld) does not match every's cron spec \"%s\"\n", s->name, (long long)now, s->every.spec.cron);
                 return true;
         } else if (s->every.type == Every_NotInCron && Time_incron(s->every.spec.cron, now)) {
-                s->monitor |= Monitor_Waiting;
+                // s->monitor |= Monitor_Waiting;
                 DEBUG("'%s' test skipped as current time (%lld) matches every's cron spec \"not %s\"\n", s->name, (long long)now, s->every.spec.cron);
                 return true;
         }
@@ -1071,10 +1071,11 @@ int validate() {
                 if (Run.flags & Run_Stopped)
                         break;
                 // FIXME: The Service_Program must collect the exit value from last run, even if the program start should be skipped in this cycle => let check program always run the test (to be refactored with new scheduler)
-                if (! _doScheduledAction(s) && s->monitor && (s->type == Service_Program || ! _checkSkip(s))) {
+                if (! _doScheduledAction(s) && s->monitor && (s->type == Service_Program || s->mode & Monitor_Forced || ! _checkSkip(s))) {
                         _checkTimeout(s); // Can disable monitoring => need to check s->monitor again
                         if (s->monitor) {
                                 State_Type state = s->check(s);
+                                s->mode &= ~Monitor_Forced;
                                 if (state != State_Init && s->monitor != Monitor_Not) // The monitoring can be disabled by some matching rule in s->check so we have to check again before setting to Monitor_Yes
                                         s->monitor = Monitor_Yes;
                                 if (state == State_Failed)
