@@ -793,6 +793,23 @@ static void internal_error(Socket_T S, int status, char *msg) {
 }
 
 
+void send_redirect(HttpRequest req, HttpResponse res, int rstatus, char* url)
+{
+        const char *status_msg = get_status_string(rstatus);
+        reset_response(res);
+        set_status(res, rstatus);
+        set_content_type(res, "text/html");
+        set_header(res, "Location", url);
+
+        StringBuffer_append(res->outputbuffer,
+             "<html><head><title>%s</title></head>"
+             "<body bgcolor=#FFFFFF><h2>%s</h2>"
+             "<a href='%s'><font size=-1>%s</font></a>"
+             "</body></html>",
+             status_msg, status_msg, url, url);
+}
+
+
 /**
  * Parse request parameters from the given query string and return a
  * linked list of HttpParameters

@@ -103,6 +103,7 @@ void set_content_type(HttpResponse res, const char *mime);
 const char *get_header(HttpRequest req, const char *header_name);
 void escapeHTML(StringBuffer_T sb, const char *s);
 void send_error(HttpRequest, HttpResponse, int status, const char *message, ...);
+void send_redirect(HttpRequest, HttpResponse, int, char*);
 const char *get_parameter(HttpRequest req, const char *parameter_name);
 void set_header(HttpResponse res, const char *name, const char *value);
 void Processor_setHttpPostLimit();

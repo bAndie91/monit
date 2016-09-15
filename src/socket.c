@@ -319,6 +319,9 @@ static T _createUnixSocket(const char *pathname, Socket_Type type, int timeout) 
         ASSERT(pathname);
         int s = socket(PF_UNIX, type, 0);
         if (s >= 0) {
+                /* activate Linux' socket Autobind Feature */
+                int sockopt1 = 1;
+                setsockopt(s, SOL_SOCKET, SO_PASSCRED, &sockopt1, sizeof(sockopt1));
                 unixsocket.sun_family = AF_UNIX;
                 snprintf(unixsocket.sun_path, sizeof(unixsocket.sun_path), "%s", pathname);
                 if (Net_setNonBlocking(s)) {

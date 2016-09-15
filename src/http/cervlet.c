@@ -103,6 +103,7 @@
 #define VIEWLOG     "/_viewlog"
 #define DOACTION    "/_doaction"
 #define FAVICON     "/favicon.ico"
+#define GROUPS      "/_groups"
 
 
 typedef enum {
@@ -128,6 +129,7 @@ static void do_home_net(HttpRequest, HttpResponse);
 static void do_home_process(HttpRequest, HttpResponse);
 static void do_home_program(HttpRequest, HttpResponse);
 static void do_home_host(HttpRequest, HttpResponse);
+static void do_groups(HttpRequest, HttpResponse);
 static void do_about(HttpRequest, HttpResponse);
 static void do_ping(HttpRequest, HttpResponse);
 static void do_getid(HttpRequest, HttpResponse);
@@ -198,6 +200,25 @@ void init_service() {
 
 
 /* ----------------------------------------------------------------- Private */
+
+
+static boolean_t _is_in_group(Service_T s, const char* groupname)
+{
+	if(groupname == NULL || groupname[0] == '0') return true;
+	boolean_t ingroup = false;
+	for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next)
+		if(IS(sg->name, groupname))
+		{
+			for (list_t m  = sg->members->head; m; m = m->next)
+				if(m->e == s) { ingroup = true; break; }
+			break;
+		}
+	return ingroup;
+}
+static const char* _get_request_groupname(HttpRequest req)
+{
+	return Util_urlDecode((char *)get_parameter(req, "group"));
+}
 
 
 static char *_getUptime(time_t delta, char s[256]) {
@@ -447,6 +468,10 @@ static void doGet(HttpRequest req, HttpResponse res) {
                 LOCK(Run.mutex)
                 do_home(req, res);
                 END_LOCK;
+        } else if (ACTION(GROUPS)) {
+                LOCK(Run.mutex)
+                do_groups(req, res);
+                END_LOCK;
         } else if (ACTION(RUN)) {
                 handle_run(req, res);
         } else if (ACTION(TEST)) {
@@ -558,8 +583,8 @@ static void do_head(HttpResponse res, const char *path, const char *name, int re
                             "<table id='nav' width='100%%'>"\
                             "  <tr>"\
                             "    <td width='20%%'><a href='.'>Home</a>&nbsp;&gt;&nbsp;<a href='%s'>%s</a></td>"\
-                            "    <td width='60%%' style='text-align:center;'>Use <a href='http://mmonit.com/'>M/Monit</a> to manage all your Monit instances</td>"\
-                            "    <td width='20%%'><p align='right'><a href='_about'>Monit %s</a></td>"\
+                            "    <td width='60%%' style='text-align:center;'></td>"\
+                            "    <td width='20%%'><p align='right'><a href='_groups'>Groups</a> <a href='_about'>Monit %s</a></td>"\
                             "  </tr>"\
                             "</table>"\
                             "<center>",
@@ -581,7 +606,19 @@ static void do_foot(HttpResponse res) {
 
 
 static void do_home(HttpRequest req, HttpResponse res) {
-        do_head(res, "", "", Run.polltime);
+        const char* groupname = _get_request_groupname(req);
+        if (groupname && groupname[0] != '0')
+        {
+                StringBuffer_T href_group = StringBuffer_create(4);
+                StringBuffer_T str_group = StringBuffer_create(4);
+                StringBuffer_append(href_group, "?group=%s", groupname);
+                StringBuffer_append(str_group, "Group: %s", groupname);
+                do_head(res, StringBuffer_toString(href_group), StringBuffer_toString(str_group), Run.polltime);
+        }
+        else
+        {
+                do_head(res, "", "", Run.polltime);
+        }
         StringBuffer_append(res->outputbuffer,
                             "<table id='header' width='100%%'>"
                             " <tr>"
@@ -602,6 +639,41 @@ static void do_home(HttpRequest req, HttpResponse res) {
         do_home_net(req, res);
         do_home_host(req, res);
 
+        do_foot(res);
+}
+
+
+static void do_groups(HttpRequest req, HttpResponse res) {
+        do_head(res, "./_groups", "Groups", Run.polltime);
+        StringBuffer_append(res->outputbuffer,
+                            "<table id='header-row'>"
+                            "<tr>"
+                            "<th align='left' class='first'>Group</th>"
+                            "<th align='right' class='first'>Running ratio</th>"
+                            "<th align='right' class='first'>Running percent</th>"
+                            "</tr>");
+        boolean_t on = true;
+        for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next)
+        {
+                float up = 0, total = 0;
+                for (list_t m = sg->members->head; m; m = m->next) {
+                        Service_T s = m->e;
+                        if (!(s->monitor == Monitor_Not || s->monitor & Monitor_Init || s->error))
+                                up++;
+                        total++;
+                }
+                StringBuffer_append(res->outputbuffer,
+                                    "<tr %s>"
+                                    "<td align='left'><a href='./?group=%s'>%s</a></td>"
+                                    "<td align='right'>%.0f/%.0f</td>"
+                                    "<td align='right'>%.1f%%</td>"
+                                    "</tr>",
+                                    on ? "class='stripe'" : "",
+                                    sg->name, sg->name,
+                                    up, total, 100. * up / total);
+                on = !on;
+        }
+        StringBuffer_append(res->outputbuffer, "</table>");
         do_foot(res);
 }
 
@@ -891,8 +963,13 @@ static void handle_action(HttpRequest req, HttpResponse res) {
                 LogInfo("'%s' %s on user request\n", s->name, action);
                 Run.flags |= Run_ActionPending; /* set the global flag */
                 do_wakeupcall();
+                
+                send_redirect(req, res, SC_MOVED_TEMPORARILY, req->url);
         }
-        do_service(req, res, s);
+        else
+        {
+                do_service(req, res, s);
+        }
 }
 
 
@@ -990,23 +1067,44 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
         else if (s->type != Service_System)
                 StringBuffer_append(res->outputbuffer, "<tr><td>Path</td><td>%s</td></tr>", s->path);
         StringBuffer_append(res->outputbuffer, "<tr><td>Status</td><td>%s</td></tr>", get_service_status(HTML, s, buf, sizeof(buf)));
+        StringBuffer_append(res->outputbuffer, "<tr><td>Group</td><td class='blue-text'>");
         for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next)
                 for (list_t m = sg->members->head; m; m = m->next)
                         if (m->e == s)
-                                StringBuffer_append(res->outputbuffer, "<tr><td>Group</td><td class='blue-text'>%s</td></tr>", sg->name);
+                                StringBuffer_append(res->outputbuffer, " <a href='./?group=%s'>%s</a> ", sg->name, sg->name);
+        StringBuffer_append(res->outputbuffer, "</td></tr>");
         StringBuffer_append(res->outputbuffer,
                             "<tr><td>Monitoring status</td><td>%s</td></tr>", get_monitoring_status(HTML, s, buf, sizeof(buf)));
         StringBuffer_append(res->outputbuffer,
                             "<tr><td>Monitoring mode</td><td>%s</td></tr>", modenames[s->mode]);
         StringBuffer_append(res->outputbuffer,
                             "<tr><td>On reboot</td><td>%s</td></tr>", onrebootnames[s->onreboot]);
+        boolean_t found_item = false;
+        StringBuffer_append(res->outputbuffer, "<tr><td>Depends on service </td><td>");
         for (Dependant_T d = s->dependantlist; d; d = d->next) {
                 if (d->dependant != NULL) {
+                        found_item = true;
                         StringBuffer_append(res->outputbuffer,
-                                            "<tr><td>Depends on service </td><td> <a href=%s> %s </a></td></tr>",
+                                            " <a href=%s> %s </a> ",
                                             d->dependant, d->dependant);
                 }
         }
+        if(!found_item) StringBuffer_append(res->outputbuffer, "&ndash;");
+        StringBuffer_append(res->outputbuffer, "</td></tr>");
+        found_item = false;
+        StringBuffer_append(res->outputbuffer, "<tr><td>Dependent service </td><td>");
+        for (Service_T s_i = servicelist; s_i; s_i = s_i->next) {
+                for (Dependant_T d = s_i->dependantlist; d; d = d->next) {
+                        if (d->dependant != NULL && strcmp(d->dependant, s->name)==0) {
+                                found_item = true;
+                                StringBuffer_append(res->outputbuffer,
+                                                    " <a href=%s> %s </a> ",
+                                                    s_i->name, s_i->name);
+                        }
+                }
+        }
+        if(!found_item) StringBuffer_append(res->outputbuffer, "&ndash;");
+        StringBuffer_append(res->outputbuffer, "</td></tr>");
         if (s->start) {
                 int i = 0;
                 StringBuffer_append(res->outputbuffer, "<tr><td>Start program</td><td>'");
@@ -1161,6 +1259,7 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Process)
                         continue;
+                if (!_is_in_group(s, _get_request_groupname(req))) continue;
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1213,6 +1312,7 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Program)
                         continue;
+                if (!_is_in_group(s, _get_request_groupname(req))) continue;
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1283,6 +1383,7 @@ static void do_home_net(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Net)
                         continue;
+                if (!_is_in_group(s, _get_request_groupname(req))) continue;
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1324,6 +1425,7 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Filesystem)
                         continue;
+                if (!_is_in_group(s, _get_request_groupname(req))) continue;
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1377,6 +1479,7 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_File)
                         continue;
+                if (!_is_in_group(s, _get_request_groupname(req))) continue;
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1430,6 +1533,7 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Fifo)
                         continue;
+                if (!_is_in_group(s, _get_request_groupname(req))) continue;
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1477,6 +1581,7 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Directory)
                         continue;
+                if (!_is_in_group(s, _get_request_groupname(req))) continue;
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1524,6 +1629,7 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Host)
                         continue;
+                if (!_is_in_group(s, _get_request_groupname(req))) continue;
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -2294,14 +2400,15 @@ static void print_summary(HttpRequest req, HttpResponse res) {
         }
 }
 
-
 static void _printReport(HttpRequest req, HttpResponse res) {
         set_content_type(res, "text/plain");
         const char *type = get_parameter(req, "type");
+        const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
         int count = 0;
         if (! type) {
                 float up = 0, down = 0, init = 0, unmonitored = 0, total = 0;
                 for (Service_T s = servicelist; s; s = s->next) {
+                		if(stringGroup && !_is_in_group(s, stringGroup)) continue;
                         if (s->monitor == Monitor_Not)
                                 unmonitored++;
                         else if (s->monitor & Monitor_Init)
@@ -2325,27 +2432,28 @@ static void _printReport(HttpRequest req, HttpResponse res) {
                         3, total);
         } else if (Str_isEqual(type, "up")) {
                 for (Service_T s = servicelist; s; s = s->next)
-                        if (s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && ! s->error)
+                        if ((!stringGroup || _is_in_group(s, stringGroup)) && s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && ! s->error)
                                 count++;
                 StringBuffer_append(res->outputbuffer, "%d\n", count);
         } else if (Str_isEqual(type, "down")) {
                 for (Service_T s = servicelist; s; s = s->next)
-                        if (s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && s->error)
+                        if ((!stringGroup || _is_in_group(s, stringGroup)) && s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && s->error)
                                 count++;
                 StringBuffer_append(res->outputbuffer, "%d\n", count);
         } else if (Str_startsWith(type, "initiali")) { // allow 'initiali(s|z)ing'
                 for (Service_T s = servicelist; s; s = s->next)
-                        if (s->monitor & Monitor_Init)
+                        if ((!stringGroup || _is_in_group(s, stringGroup)) && s->monitor & Monitor_Init)
                                 count++;
                 StringBuffer_append(res->outputbuffer, "%d\n", count);
         } else if (Str_isEqual(type, "unmonitored")) {
                 for (Service_T s = servicelist; s; s = s->next)
-                        if (s->monitor == Monitor_Not)
+                        if ((!stringGroup || _is_in_group(s, stringGroup)) && s->monitor == Monitor_Not)
                                 count++;
                 StringBuffer_append(res->outputbuffer, "%d\n", count);
         } else if (Str_isEqual(type, "total")) {
                 for (Service_T s = servicelist; s; s = s->next)
-                        count++;
+                        if(!stringGroup || _is_in_group(s, stringGroup))
+                                count++;
                 StringBuffer_append(res->outputbuffer, "%d\n", count);
         } else {
                 send_error(req, res, SC_BAD_REQUEST, "Invalid report type: '%s'", type);
