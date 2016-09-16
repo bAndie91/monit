@@ -1085,7 +1085,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
                 if (d->dependant != NULL) {
                         found_item = true;
                         StringBuffer_append(res->outputbuffer,
-                                            " <a href=%s> %s </a> ",
+                                            " <a href='%s'>%s</a> ",
                                             d->dependant, d->dependant);
                 }
         }
@@ -1098,7 +1098,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
                         if (d->dependant != NULL && strcmp(d->dependant, s->name)==0) {
                                 found_item = true;
                                 StringBuffer_append(res->outputbuffer,
-                                                    " <a href=%s> %s </a> ",
+                                                    " <a href='%s'>%s</a> ",
                                                     s_i->name, s_i->name);
                         }
                 }
