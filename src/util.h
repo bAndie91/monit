@@ -400,6 +400,7 @@ char *Util_portDescription(Port_T p, char *buf, int bufsize);
  */
 const char *Util_timestr(int time);
 
+int Util_statGlob(const char *, struct stat *);
 
 #endif
 

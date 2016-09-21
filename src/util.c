@@ -108,6 +108,8 @@
 #include <grp.h>
 #endif
 
+#include <glob.h>
+
 #include "monit.h"
 #include "engine.h"
 #include "md5.h"
@@ -1850,6 +1852,24 @@ int Util_getAction(const char *action) {
         }
         /* the action was not found */
         return Action_Ignored;
+}
+
+
+int Util_statGlob(const char *patt, struct stat *st_buf_P)
+{
+    glob_t glob_result;
+   	int stat_err = stat(patt, st_buf_P);
+    if (stat_err != 0)
+    {
+    	int glob_err = glob(patt, GLOB_BRACE, NULL, &glob_result);
+    	if(glob_err == 0)
+    	{
+    		LogDebug("Glob resolved: %s: %s", patt, glob_result.gl_pathv[0]);
+    		stat_err = stat(glob_result.gl_pathv[0], st_buf_P);
+    	}
+    	globfree(&glob_result);
+    }
+    return stat_err;
 }
 
 

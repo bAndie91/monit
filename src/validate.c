@@ -1198,7 +1198,8 @@ State_Type check_file(Service_T s) {
         ASSERT(s->inf);
         struct stat stat_buf;
         State_Type rv = State_Succeeded;
-        if (stat(s->path, &stat_buf) != 0) {
+        
+        if (Util_statGlob(s->path, &stat_buf) != 0) {
                 for (Nonexist_T l = s->nonexistlist; l; l = l->next)
                         Event_post(s, Event_Nonexist, State_Failed, l->action, "file doesn't exist");
                 return State_Failed;
@@ -1253,7 +1254,8 @@ State_Type check_directory(Service_T s) {
         ASSERT(s->inf);
         struct stat stat_buf;
         State_Type rv = State_Succeeded;
-        if (stat(s->path, &stat_buf) != 0) {
+        
+        if (Util_statGlob(s->path, &stat_buf) != 0) {
                 for (Nonexist_T l = s->nonexistlist; l; l = l->next)
                         Event_post(s, Event_Nonexist, State_Failed, l->action, "directory doesn't exist");
                 return State_Failed;
@@ -1292,7 +1294,7 @@ State_Type check_fifo(Service_T s) {
         ASSERT(s->inf);
         struct stat stat_buf;
         State_Type rv = State_Succeeded;
-        if (stat(s->path, &stat_buf) != 0) {
+        if (Util_statGlob(s->path, &stat_buf) != 0) {
                 for (Nonexist_T l = s->nonexistlist; l; l = l->next)
                         Event_post(s, Event_Nonexist, State_Failed, l->action, "fifo doesn't exist");
                 return State_Failed;
