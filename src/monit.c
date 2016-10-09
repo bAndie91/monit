@@ -547,6 +547,9 @@ static void do_default() {
 
                 atexit(file_finalize);
 
+                if (can_http())
+                        monit_http(Httpd_Start);
+
                 if (Run.startdelay) {
                         time_t now = Time_now();
                         time_t delay = now + Run.startdelay;
@@ -559,9 +562,6 @@ static void do_default() {
                                 now = Time_now();
                         }
                 }
-
-                if (can_http())
-                        monit_http(Httpd_Start);
 
                 /* send the monit startup notification */
                 Event_post(Run.system, Event_Instance, State_Changed, Run.system->action_MONIT_START, "Monit %s started", VERSION);
