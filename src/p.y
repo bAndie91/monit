@@ -2799,9 +2799,9 @@ boolean_t parse(char *controlfile) {
         /*
          * Secure check the monitrc file. The run control file must have the
          * same uid as the REAL uid of this process, it must have permissions
-         * no greater than 700 and it must not be a symbolic link.
+         * no greater than 775 and it must not be a symbolic link.
          */
-        if (! file_checkStat(controlfile, "control file", S_IRUSR|S_IWUSR|S_IXUSR))
+        if (! file_checkStat(controlfile, "control file", S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH))
                 return false;
 
         return cfg_errflag == 0;
