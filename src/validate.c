@@ -740,7 +740,7 @@ static State_Type _checkMatch(Service_T s) {
                  The central filesystems initialization will allow to reduce the statfs() calls in the case that there will be multiple file and/or filesystems tests for the same fs. Temporarily we go with
                  dummy Str_startsWith() as quick fix which will cover 99.9% of use cases without rising the statfs overhead if statfs call would be inlined here.
                  */
-                if (Str_startsWith(s->path, "/proc")) {
+                if (Str_startsWith(s->path, "/proc") || Str_startsWith(s->path, "/sys")) {
                         s->inf->priv.file.readpos = 0;
                 } else {
                         /* If inode changed or size shrinked -> set read position = 0 */

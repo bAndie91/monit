@@ -412,7 +412,7 @@ static void _sendRequest(mysql_t *mysql) {
 static void _requestHandshake(mysql_t *mysql) {
         ASSERT(mysql->state == MySQL_Handshake);
         _initRequest(mysql, 1);
-        _setUInt4(&mysql->request, CLIENT_LONG_PASSWORD | CLIENT_PROTOCOL_41 | CLIENT_SECURE_CONNECTION);                                                                             // capabilities
+        _setUInt4(&mysql->request, CLIENT_LONG_PASSWORD | CLIENT_PROTOCOL_41 | CLIENT_SECURE_CONNECTION | CLIENT_PLUGIN_AUTH);                                                        // capabilities
         _setUInt4(&mysql->request, 8192);                                                                                                                                             // maxpacketsize
         _setUInt1(&mysql->request, 8);                                                                                                                                                // characterset
         _setPadding(&mysql->request, 23);                                                                                                                                             // reserved bytes
