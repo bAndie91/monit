@@ -10,6 +10,9 @@ Fixed: Issue #547: If the file service is unmonitored or stopped, the read posit
 is reset to the end of the file if monitoring is enabled again, so the content which is added while the
 service is not monitored will be ignored.
 
+Fixed: Issue #501: check program may fail when parent service is not monitored every cycle and multiple
+services depend on it.
+
 Fixed: If the connection timed out, Monit reported incorrect error: "Resource temporarily unavailable".
 
 
