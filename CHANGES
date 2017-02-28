@@ -6,6 +6,10 @@ Version 5.21.0
 
 Fixed: Issue #488: Ping test may fail.
 
+Fixed: Issue #547: If the file service is unmonitored or stopped, the read position in the content test
+is reset to the end of the file if monitoring is enabled again, so the content which is added while the
+service is not monitored will be ignored.
+
 Fixed: If the connection timed out, Monit reported incorrect error: "Resource temporarily unavailable".
 
 
