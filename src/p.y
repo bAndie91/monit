@@ -2797,7 +2797,7 @@ boolean_t parse(char *controlfile) {
                 FREE(argyytext);
 
         /*
-         * Secure check the monitrc file. The run control file must have the
+         * Secure check the monitrc file. The run control file might have the
          * same uid as the REAL uid of this process, it must have permissions
          * no greater than 775 and it must not be a symbolic link.
          */

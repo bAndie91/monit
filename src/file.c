@@ -185,10 +185,12 @@ boolean_t file_checkStat(char *filename, char *description, int permmask) {
                 LogError("The %s '%s' is not a regular file.\n", description,  filename);
                 return false;
         }
+#if 0
         if (buf.st_uid != geteuid())  {
                 LogError("The %s '%s' must be owned by you.\n", description, filename);
                 return false;
         }
+#endif
         if ((buf.st_mode & 0777) & ~permmask) {
                 LogError("The %s '%s' permission 0%o is wrong, maximum 0%o allowed\n", description, filename, buf.st_mode & 0777, permmask & 0777);
                 return false;
