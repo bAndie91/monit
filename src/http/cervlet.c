@@ -683,6 +683,19 @@ static void do_groups(HttpRequest req, HttpResponse res) {
                 on = !on;
         }
         StringBuffer_append(res->outputbuffer, "</table>");
+        StringBuffer_append(res->outputbuffer,
+			"<script type='text/javascript'>"
+			"var table = document.getElementById('header-row');"
+			"var tb = table.tBodies[0], tr = Array.prototype.slice.call(tb.rows, 1);"
+			"tr = tr.sort(function (a, b){"
+			" return a.cells[0].textContent.trim().localeCompare(b.cells[0].textContent.trim());"
+			"});"
+			"for(var i = 0; i < tr.length; ++i){"
+			" tb.appendChild(tr[i]);"
+			" tr[i].className=i%2?'':'stripe';"
+			"}"
+        	"</script>"
+        );
         do_foot(res);
 }
 
