@@ -117,7 +117,7 @@ static boolean_t is_readonly(HttpRequest);
 static void printFavicon(HttpResponse);
 static void doGet(HttpRequest, HttpResponse);
 static void doPost(HttpRequest, HttpResponse);
-static void do_head(HttpResponse res, const char *path, const char *name, int refresh);
+static void do_head(HttpRequest req, HttpResponse res, const char *path, const char *name, int refresh);
 static void do_foot(HttpResponse res);
 static void do_home(HttpRequest, HttpResponse);
 static void do_home_system(HttpRequest, HttpResponse);
@@ -202,6 +202,7 @@ void init_service() {
 /* ----------------------------------------------------------------- Private */
 
 
+#define IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s) if(!_is_in_group(s, _get_request_groupname(req))){continue;}
 static boolean_t _is_in_group(Service_T s, const char* groupname)
 {
 	if(groupname == NULL || groupname[0] == '0') return true;
@@ -530,10 +531,11 @@ static void printFavicon(HttpResponse res) {
 }
 
 
-static void do_head(HttpResponse res, const char *path, const char *name, int refresh) {
+static void do_head(HttpRequest req, HttpResponse res, const char *path, const char *name, int refresh) {
         unsigned int up = 0;
         unsigned int all = 0;
         for (Service_T s = servicelist; s; s = s->next) {
+        	IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
         	all++;
         	if(s->monitor != Monitor_Not && !(s->monitor & Monitor_Init) && s->error == 0) up++;
         }
@@ -620,11 +622,11 @@ static void do_home(HttpRequest req, HttpResponse res) {
                 StringBuffer_T str_group = StringBuffer_create(4);
                 StringBuffer_append(href_group, "?group=%s", groupname);
                 StringBuffer_append(str_group, "Group: %s", groupname);
-                do_head(res, StringBuffer_toString(href_group), StringBuffer_toString(str_group), Run.polltime);
+                do_head(req, res, StringBuffer_toString(href_group), StringBuffer_toString(str_group), Run.polltime);
         }
         else
         {
-                do_head(res, "", "", Run.polltime);
+                do_head(req, res, "", "", Run.polltime);
         }
         StringBuffer_append(res->outputbuffer,
                             "<table id='header' width='100%%'>"
@@ -651,7 +653,7 @@ static void do_home(HttpRequest req, HttpResponse res) {
 
 
 static void do_groups(HttpRequest req, HttpResponse res) {
-        do_head(res, "./_groups", "Groups", Run.polltime);
+        do_head(req, res, "./_groups", "Groups", Run.polltime);
         StringBuffer_append(res->outputbuffer,
                             "<table id='header-row'>"
                             "<tr>"
@@ -722,7 +724,7 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
         int pid = exist_daemon();
         char buf[STRLEN];
 
-        do_head(res, "_runtime", "Runtime", 1000);
+        do_head(req, res, "_runtime", "Runtime", 1000);
         StringBuffer_append(res->outputbuffer,
                             "<h2>Monit runtime status</h2>");
         StringBuffer_append(res->outputbuffer, "<table id='status-table'><tr>"
@@ -909,7 +911,7 @@ static void do_viewlog(HttpRequest req, HttpResponse res) {
                 send_error(req, res, SC_FORBIDDEN, "You do not have sufficient privileges to access this page");
                 return;
         }
-        do_head(res, "_viewlog", "View log", 100);
+        do_head(req, res, "_viewlog", "View log", 100);
         if ((Run.flags & Run_Log) && ! (Run.flags & Run_UseSyslog)) {
                 struct stat sb;
                 if (! stat(Run.files.log, &sb)) {
@@ -1051,7 +1053,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
 
         ASSERT(s);
 
-        do_head(res, s->name, s->name, Run.polltime);
+        do_head(req, res, s->name, s->name, Run.polltime);
         StringBuffer_append(res->outputbuffer,
                             "<h2>%s status</h2>"
                             "<table id='status-table'>"
@@ -1266,7 +1268,7 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Process)
                         continue;
-                if (!_is_in_group(s, _get_request_groupname(req))) continue;
+                IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1319,7 +1321,7 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Program)
                         continue;
-                if (!_is_in_group(s, _get_request_groupname(req))) continue;
+                IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1390,7 +1392,7 @@ static void do_home_net(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Net)
                         continue;
-                if (!_is_in_group(s, _get_request_groupname(req))) continue;
+                IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1432,7 +1434,7 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Filesystem)
                         continue;
-                if (!_is_in_group(s, _get_request_groupname(req))) continue;
+                IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1486,7 +1488,7 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_File)
                         continue;
-                if (!_is_in_group(s, _get_request_groupname(req))) continue;
+                IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1540,7 +1542,7 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Fifo)
                         continue;
-                if (!_is_in_group(s, _get_request_groupname(req))) continue;
+                IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1588,7 +1590,7 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Directory)
                         continue;
-                if (!_is_in_group(s, _get_request_groupname(req))) continue;
+                IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1636,7 +1638,7 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type != Service_Host)
                         continue;
-                if (!_is_in_group(s, _get_request_groupname(req))) continue;
+                IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
