@@ -531,11 +531,17 @@ static void printFavicon(HttpResponse res) {
 
 
 static void do_head(HttpResponse res, const char *path, const char *name, int refresh) {
+        unsigned int up = 0;
+        unsigned int all = 0;
+        for (Service_T s = servicelist; s; s = s->next) {
+        	all++;
+        	if(s->monitor != Monitor_Not && !(s->monitor & Monitor_Init) && s->error == 0) up++;
+        }
         StringBuffer_append(res->outputbuffer,
                             "<!DOCTYPE html>"\
                             "<html>"\
                             "<head>"\
-                            "<title>Monit: %s</title> "\
+                            "<title>%d/%d Monit: %s</title> "\
                             "<style type=\"text/css\"> "\
                             " html, body {height: 100%%;margin: 0;} "\
                             " body {background-color: white;font: normal normal normal 16px/20px 'HelveticaNeue', Helvetica, Arial, sans-serif; color:#222;} "\
@@ -588,6 +594,7 @@ static void do_head(HttpResponse res, const char *path, const char *name, int re
                             "  </tr>"\
                             "</table>"\
                             "<center>",
+                            up, all,
                             Run.system->name, refresh, path, name, VERSION);
 }
 

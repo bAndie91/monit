@@ -8,3 +8,13 @@
 build/
 project.xcworkspace/
 xcuserdata/
+
+*.o
+*.lo
+.dirstamp
+
+/src/y.tab.c
+/src/y.output
+/src/lex.yy.c
+/monit
+/monit.1
