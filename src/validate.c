@@ -145,6 +145,7 @@ static State_Type _checkConnection(Service_T s, Port_T p) {
         volatile State_Type rv = State_Succeeded;
         char buf[STRLEN];
         char report[STRLEN] = {};
+        int event_postend = Event_Connection;
 retry:
         TRY
         {
@@ -156,6 +157,22 @@ retry:
         {
                 rv = State_Failed;
                 snprintf(report, STRLEN, "failed protocol test [%s] at %s -- %s", p->protocol->name, Util_portDescription(p, buf, sizeof(buf)), Exception_frame.message);
+                
+                /* Guess Event type from Exception message heuristically. */
+                regex_t *regex;
+                NEW(regex);
+                regcomp(regex, "checksum", REG_NOSUB|REG_EXTENDED);
+                event_postend = Event_Connection;
+                if(regexec(regex, Exception_frame.message, 0, NULL, 0) == 0) {
+                    event_postend = Event_Checksum;
+                } else {
+                    regcomp(regex, "match", REG_NOSUB|REG_EXTENDED);
+                    if(regexec(regex, Exception_frame.message, 0, NULL, 0) == 0) {
+                        event_postend = Event_Content;
+                    }
+                }
+                regfree(regex);
+                FREE(regex);
         }
         END_TRY;
         if (rv == State_Failed) {
@@ -163,9 +180,9 @@ retry:
                         DEBUG("'%s' %s (attempt %d/%d)\n", s->name, report, p->retry - retry_count, p->retry);
                         goto retry;
                 }
-                Event_post(s, Event_Connection, State_Failed, p->action, "%s", report);
+                Event_post(s, event_postend, State_Failed, p->action, "%s", report);
         } else {
-                Event_post(s, Event_Connection, State_Succeeded, p->action, "connection succeeded to %s", Util_portDescription(p, buf, sizeof(buf)));
+                Event_post(s, event_postend, State_Succeeded, p->action, "connection succeeded to %s", Util_portDescription(p, buf, sizeof(buf)));
         }
         return rv;
 }

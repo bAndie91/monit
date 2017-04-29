@@ -205,15 +205,18 @@ void init_service() {
 #define IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s) if(!_is_in_group(s, _get_request_groupname(req))){continue;}
 static boolean_t _is_in_group(Service_T s, const char* groupname)
 {
-	if(groupname == NULL || groupname[0] == '0') return true;
+	/* Returns true if no groupname given or the service is member of given group(s). */
+	if(groupname == NULL || groupname[0] == '\0') return true;
 	boolean_t ingroup = false;
 	for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next)
+	{
 		if(IS(sg->name, groupname))
 		{
 			for (list_t m  = sg->members->head; m; m = m->next)
 				if(m->e == s) { ingroup = true; break; }
 			break;
 		}
+	}
 	return ingroup;
 }
 static const char* _get_request_groupname(HttpRequest req)

@@ -452,7 +452,7 @@ const char *Event_get_description(Event_T E) {
                                 case State_Failed:
                                         return (*et).description_failed;
                                 case State_Init:
-                                        return (*et).description_failed;
+                                        return (*et).description_failed; /* ??? */
                                 case State_Changed:
                                         return (*et).description_changed;
                                 case State_ChangedNot:
