@@ -1867,8 +1867,19 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
         for (Port_T p = s->portlist; p; p = p->next) {
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Port</td><td>");
                 StringBuffer_T buf = StringBuffer_create(64);
-                StringBuffer_append(buf, "If failed [%s]:%d%s",
+                StringBuffer_append(buf, "If failed ");
+                if (IS(p->protocol->name, "HTTP"))
+                        StringBuffer_append(buf, "<a href=\"http%s://%s:%d%s\">",
+#ifdef HAVE_OPENSSL
+                        p->target.net.ssl.flags
+#else
+                        0
+#endif
+                        ? "s" : "", p->hostname, p->target.net.port, Util_portRequestDescription(p));
+                StringBuffer_append(buf, "[%s]:%d%s",
                         p->hostname, p->target.net.port, Util_portRequestDescription(p));
+                if (IS(p->protocol->name, "HTTP"))
+                        StringBuffer_append(buf, "</a>");
                 if (p->outgoing.ip)
                         StringBuffer_append(buf, " via address %s", p->outgoing.ip);
                 StringBuffer_append(buf, " type %s/%s protocol %s with timeout %s",
