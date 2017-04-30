@@ -205,18 +205,46 @@ void init_service() {
 #define IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s) if(!_is_in_group(s, _get_request_groupname(req))){continue;}
 static boolean_t _is_in_group(Service_T s, const char* groupname)
 {
-	/* Returns true if no groupname given or the service is member of given group(s). */
+	/* Returns true if no groupname given 
+	   or the service is member of all the given groups. */
 	if(groupname == NULL || groupname[0] == '\0') return true;
 	boolean_t ingroup = false;
-	for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next)
-	{
-		if(IS(sg->name, groupname))
+	boolean_t group_exists;
+	boolean_t service_in_this_group;
+	char* gn;
+	char* comma;
+	
+	gn = (char*)groupname;
+	do{
+		comma = strchrnul(gn, ',');
+		if(comma - gn <= 0) continue;
+		group_exists = false;
+		for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next)
 		{
-			for (list_t m  = sg->members->head; m; m = m->next)
-				if(m->e == s) { ingroup = true; break; }
-			break;
+			if(strlen(sg->name) == comma - gn && strncmp(sg->name, gn, comma - gn)==0)
+			{
+				group_exists = true;
+				ingroup = true;
+				service_in_this_group = false;
+				for (list_t m  = sg->members->head; m; m = m->next) {
+					if(m->e == s) {
+						service_in_this_group = true;
+						break;
+					}
+				}
+				if(!service_in_this_group) {
+					ingroup = false;
+					goto _is_in_group_end;
+				}
+			}
+		}
+		if(!group_exists) {
+			ingroup = false;
+			goto _is_in_group_end;
 		}
 	}
+	while(comma && comma[0] != '\0' && (gn = comma+1));
+	_is_in_group_end:
 	return ingroup;
 }
 static const char* _get_request_groupname(HttpRequest req)
@@ -593,9 +621,8 @@ static void do_head(HttpRequest req, HttpResponse res, const char *path, const c
                             "<body><div id='wrap'><div id='main'>" \
                             "<table id='nav' width='100%%'>"\
                             "  <tr>"\
-                            "    <td width='20%%'><a href='.'>Home</a>&nbsp;&gt;&nbsp;<a href='%s'>%s</a></td>"\
-                            "    <td width='60%%' style='text-align:center;'></td>"\
-                            "    <td width='20%%'><p align='right'><a href='_groups'>Groups</a> <a href='_about'>Monit %s</a></td>"\
+                            "    <td width='50%%'><a href='.'>Home</a>&nbsp;&gt;&nbsp;<a href='%s'>%s</a></td>"\
+                            "    <td width='50%%'><p align='right'><a href='_groups'>Groups</a> <a href='_about'>Monit %s</a></td>"\
                             "  </tr>"\
                             "</table>"\
                             "<center>",
@@ -695,7 +722,7 @@ static void do_groups(HttpRequest req, HttpResponse res) {
 			"});"
 			"for(var i = 0; i < tr.length; ++i){"
 			" tb.appendChild(tr[i]);"
-			" tr[i].className=i%2?'':'stripe';"
+			" tr[i].className=i%%2?'':'stripe';"
 			"}"
         	"</script>"
         );
