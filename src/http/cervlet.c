@@ -202,7 +202,7 @@ void init_service() {
 /* ----------------------------------------------------------------- Private */
 
 
-#define IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s) if(!_is_in_group(s, _get_request_groupname(req))){continue;}
+#define IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s) if(!_is_in_group(s,_get_request_groupname(req))){continue;}
 static boolean_t _is_in_group(Service_T s, const char* groupname)
 {
 	/* Returns true if no groupname given 
@@ -251,6 +251,7 @@ static const char* _get_request_groupname(HttpRequest req)
 {
 	return Util_urlDecode((char *)get_parameter(req, "group"));
 }
+#define IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s) if(s->error==0&&get_parameter(req,"fails")){continue;}
 
 
 static char *_getUptime(time_t delta, char s[256]) {
@@ -567,6 +568,7 @@ static void do_head(HttpRequest req, HttpResponse res, const char *path, const c
         unsigned int all = 0;
         for (Service_T s = servicelist; s; s = s->next) {
         	IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+        	IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
         	all++;
         	if(s->monitor != Monitor_Not && !(s->monitor & Monitor_Init) && s->error == 0) up++;
         }
@@ -1312,6 +1314,7 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
                 if (s->type != Service_Process)
                         continue;
                 IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+                IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1365,6 +1368,7 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
                 if (s->type != Service_Program)
                         continue;
                 IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+                IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1436,6 +1440,7 @@ static void do_home_net(HttpRequest req, HttpResponse res) {
                 if (s->type != Service_Net)
                         continue;
                 IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+                IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1478,6 +1483,7 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
                 if (s->type != Service_Filesystem)
                         continue;
                 IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+                IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1532,6 +1538,7 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
                 if (s->type != Service_File)
                         continue;
                 IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+                IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1586,6 +1593,7 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
                 if (s->type != Service_Fifo)
                         continue;
                 IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+                IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1634,6 +1642,7 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
                 if (s->type != Service_Directory)
                         continue;
                 IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+                IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
@@ -1682,6 +1691,7 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
                 if (s->type != Service_Host)
                         continue;
                 IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
+                IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
                                             "<table id='header-row'>"
