@@ -402,5 +402,7 @@ const char *Util_timestr(int time);
 
 int Util_statGlob(const char *, struct stat *);
 
+#define ASPRINTFA(...) do{ if(asprintf(__VA_ARGS__)==-1){abort();} }while(0)
+
 #endif
 
