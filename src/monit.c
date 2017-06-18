@@ -134,7 +134,7 @@ Mutex_T  heartbeatMutex;
 static volatile boolean_t heartbeatRunning = false;
 
 char *actionnames[] = {"ignore", "alert", "restart", "stop", "exec", "unmonitor", "start", "monitor", ""};
-char *modenames[] = {"active", "passive"};
+char *modenames[] = {"active", "passive", "active-forced", "passive-forced"};
 char *onrebootnames[] = {"start", "nostart", "laststate"};
 char *checksumnames[] = {"UNKNOWN", "MD5", "SHA1"};
 char *operatornames[] = {"less than", "less than or equal to", "greater than", "greater than or equal to", "equal to", "not equal to", "changed"};
