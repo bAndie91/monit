@@ -306,7 +306,7 @@ static void _handleAction(Event_T E, Action_T A) {
                 } else {
                         if (E->source->actionratelist && (A->id == Action_Start || A->id == Action_Restart))
                                 E->source->nstart++;
-                        if (E->source->mode & Monitor_Passive && (A->id == Action_Start || A->id == Action_Stop  || A->id == Action_Restart))
+                        if (E->source->mode == Monitor_Passive && (A->id == Action_Start || A->id == Action_Stop  || A->id == Action_Restart))
                                 return;
                         control_service(E->source->name, A->id);
                 }
@@ -492,7 +492,7 @@ Action_Type Event_get_action(Event_T E) {
         if (! A)
                 return Action_Ignored;
         /* In the case of passive mode we replace the description of start, stop or restart action for alert action, because these actions are passive in this mode */
-        return (E->mode & Monitor_Passive && ((A->id == Action_Start) || (A->id == Action_Stop) || (A->id == Action_Restart))) ? Action_Alert : A->id;
+        return (E->mode == Monitor_Passive && ((A->id == Action_Start) || (A->id == Action_Stop) || (A->id == Action_Restart))) ? Action_Alert : A->id;
 }
 
 

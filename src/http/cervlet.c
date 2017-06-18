@@ -1864,13 +1864,6 @@ static void print_buttons(HttpRequest req, HttpResponse res, Service_T s) {
                                     "<td><form method=POST action=%s>"
                                     "<input type=hidden value='restart' name=action>"
                                     "<input type=submit value='Restart service'></form></td>", s->name);
-        /* Force Recheck */
-        if (s->monitor)
-                StringBuffer_append(res->outputbuffer,
-                            "<td><form method=POST action=%s>"
-                            "<input type=hidden value='monitor' name=action>"
-                            "<input type=submit value='Recheck'></form></td>",
-                            s->name);
         /* (un)monitor */
         StringBuffer_append(res->outputbuffer,
                             "<td><form method=POST action=%s>"

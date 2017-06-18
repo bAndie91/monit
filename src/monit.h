@@ -254,9 +254,8 @@ typedef enum {
 
 
 typedef enum {
-        Monitor_Active = 0x0,
-        Monitor_Passive = 0x1,
-        Monitor_Forced = 0x2
+        Monitor_Active = 0,
+        Monitor_Passive
 } __attribute__((__packed__)) Monitor_Mode;
 
 
