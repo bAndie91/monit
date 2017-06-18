@@ -366,6 +366,19 @@ static void _handleEvent(Service_T S, Event_T E) {
 /* ------------------------------------------------------------------ Public */
 
 
+void Event_post_postrun(Service_T service, Event_T e, State_Type state)
+{
+        e->state_changed = _checkState(e, state);
+        /* In the case that the state changed, update it and reset the counter */
+        if (e->state_changed) {
+                e->state = state;
+                e->count = 1;
+        } else {
+                e->count++;
+        }
+        _handleEvent(service, e);
+}
+
 /**
  * Post a new Event
  * @param service The Service the event belongs to
@@ -386,8 +399,10 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
         va_end(ap);
 
         Event_T e = service->eventlist;
+        boolean_t event_found = false;
         while (e) {
-                if (e->action == action && e->id == id) {
+                if (e->action == action && (id & e->id)) {
+                        event_found = true;
                         gettimeofday(&e->collected, NULL);
 
                         /* Shift the existing event flags to the left and set the first bit based on actual state */
@@ -396,12 +411,13 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
 
                         /* Update the message */
                         FREE(e->message);
-                        e->message = message;
-                        break;
+                        e->message = Str_dup(message);
+
+                        Event_post_postrun(service, e, state);
                 }
                 e = e->next;
         }
-        if (! e) {
+        if (! event_found) {
                 /* Only first failed/changed event can initialize the queue for given event type, thus succeeded events are ignored until first error. */
                 if (state == State_Succeeded || state == State_ChangedNot) {
                         DEBUG("'%s' %s\n", service->name, message);
@@ -422,16 +438,9 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                 e->message = message;
                 e->next = service->eventlist;
                 service->eventlist = e;
+
+                Event_post_postrun(service, e, state);
         }
-        e->state_changed = _checkState(e, state);
-        /* In the case that the state changed, update it and reset the counter */
-        if (e->state_changed) {
-                e->state = state;
-                e->count = 1;
-        } else {
-                e->count++;
-        }
-        _handleEvent(service, e);
 }
 
 

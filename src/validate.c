@@ -182,7 +182,7 @@ retry:
                 }
                 Event_post(s, event_postend, State_Failed, p->action, "%s", report);
         } else {
-                Event_post(s, event_postend, State_Succeeded, p->action, "connection succeeded to %s", Util_portDescription(p, buf, sizeof(buf)));
+                Event_post(s, Event_Checksum | Event_Content | Event_Connection, State_Succeeded, p->action, "connection succeeded to %s", Util_portDescription(p, buf, sizeof(buf)));
         }
         return rv;
 }
