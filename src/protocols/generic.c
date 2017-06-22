@@ -38,24 +38,32 @@
 #include "exceptions/IOException.h"
 
 /* Escape zero i.e. '\0' in expect buffer with "\0" so zero can be tested in expect strings as "\0". If there are no '\0' in the buffer it is returned as it is */
-static char *_escapeZeroInExpectBuffer(char *s, int n) {
-        assert(n <= Run.limits.sendExpectBuffer);
-        int i, j;
-        char t[n]; // VLA
-        for (i = 0, j = 0; j < n; i++, j++) {
-                if ((t[j] = s[i]) == '\0') {
-                        if (j + 2 < n) {
-                                t[j] = '\\';
-                                t[j + 1] = '0';
-                                j++;
-                        }
+static char *_escapeZeroInExpectBuffer(char *buf, int bufdatalen, int bufmaxlen) {
+        unsigned int nuls = 0;
+        
+        for (int j = 0; j < bufdatalen; j++) {
+                if (buf[j] == '\0') {
+                        nuls++;
                 }
         }
-        if (j > i) {
-                memcpy(s, t, n);
-                s[n] = 0;
+        if(nuls > 0)
+        {
+                char* escaped_buf = CALLOC(sizeof(char), bufmaxlen);
+                int ubi, ebi;
+                for (ubi = 0, ebi = 0; ubi < bufdatalen && ebi < bufmaxlen-2; ubi++, ebi++) {
+                        if (buf[ubi] == '\0') {
+                                escaped_buf[ebi] = '\\';
+                                ebi++;
+                                escaped_buf[ebi] = '0';
+                        } else {
+                                escaped_buf[ebi] = buf[ubi];
+                        }
+                }
+                escaped_buf[ebi] = '\0';
+                strcpy(buf, escaped_buf);
+                FREE(escaped_buf);
         }
-        return s;
+        return buf;
 }
 
 
@@ -105,7 +113,7 @@ void check_generic(Socket_T socket) {
                         int n = Socket_read(socket, buf + 1, Run.limits.sendExpectBuffer - 1) + 1;
                         buf[n] = 0;
                         if (n > 0)
-                                _escapeZeroInExpectBuffer(buf, n);
+                                _escapeZeroInExpectBuffer(buf, n, Run.limits.sendExpectBuffer + 1);
                         Socket_setTimeout(socket, timeout); // Reset back original timeout for next send/expect
                         int regex_return = regexec(g->expect, buf, 0, NULL, 0);
                         if (regex_return != 0) {
