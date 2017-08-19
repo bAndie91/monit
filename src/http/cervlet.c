@@ -1244,6 +1244,8 @@ static void do_home_system(HttpRequest req, HttpResponse res) {
         Service_T s = Run.system;
         char buf[STRLEN];
 
+        if(get_parameter(req, "fails")) return;
+        
         StringBuffer_append(res->outputbuffer,
                             "<table id='header-row'>"
                             "<tr>"
