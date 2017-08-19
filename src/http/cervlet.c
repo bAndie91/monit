@@ -118,7 +118,7 @@ static void printFavicon(HttpResponse);
 static void doGet(HttpRequest, HttpResponse);
 static void doPost(HttpRequest, HttpResponse);
 static void do_head(HttpRequest req, HttpResponse res, const char *path, const char *name, int refresh);
-static void do_foot(HttpResponse res);
+static void do_foot(HttpRequest req, HttpResponse res);
 static void do_home(HttpRequest, HttpResponse);
 static void do_home_system(HttpRequest, HttpResponse);
 static void do_home_filesystem(HttpRequest, HttpResponse);
@@ -566,6 +566,8 @@ static void printFavicon(HttpResponse res) {
 static void do_head(HttpRequest req, HttpResponse res, const char *path, const char *name, int refresh) {
         unsigned int up = 0;
         unsigned int all = 0;
+        if(get_parameter(req, "embedded")) return;
+        
         for (Service_T s = servicelist; s; s = s->next) {
         	IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
         	IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
@@ -633,7 +635,8 @@ static void do_head(HttpRequest req, HttpResponse res, const char *path, const c
 }
 
 
-static void do_foot(HttpResponse res) {
+static void do_foot(HttpRequest req, HttpResponse res) {
+        if(get_parameter(req, "embedded")) return;
         StringBuffer_append(res->outputbuffer,
                             "</center></div></div>"
                             "<div id='footer'>"
@@ -660,7 +663,8 @@ static void do_home(HttpRequest req, HttpResponse res) {
         {
                 do_head(req, res, "", "", Run.polltime);
         }
-        StringBuffer_append(res->outputbuffer,
+        if(!get_parameter(req, "embedded"))
+                StringBuffer_append(res->outputbuffer,
                             "<table id='header' width='100%%'>"
                             " <tr>"
                             "  <td colspan=2 valign='top' align='left' width='100%%'>"
@@ -680,7 +684,7 @@ static void do_home(HttpRequest req, HttpResponse res) {
         do_home_net(req, res);
         do_home_host(req, res);
 
-        do_foot(res);
+        do_foot(req, res);
 }
 
 
@@ -728,7 +732,7 @@ static void do_groups(HttpRequest req, HttpResponse res) {
 			"}"
         	"</script>"
         );
-        do_foot(res);
+        do_foot(req, res);
 }
 
 
@@ -951,7 +955,7 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "</tr></table>");
         }
-        do_foot(res);
+        do_foot(req, res);
 }
 
 
@@ -990,7 +994,7 @@ static void do_viewlog(HttpRequest req, HttpResponse res) {
                 else
                         StringBuffer_append(res->outputbuffer, "Monit uses syslog");
         }
-        do_foot(res);
+        do_foot(req, res);
 }
 
 
@@ -1232,7 +1236,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
         print_alerts(res, s->maillist);
         StringBuffer_append(res->outputbuffer, "</table>");
         print_buttons(req, res, s);
-        do_foot(res);
+        do_foot(req, res);
 }
 
 
