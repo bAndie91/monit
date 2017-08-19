@@ -2350,10 +2350,23 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
         if (stringFormat && Str_startsWith(stringFormat, "xml")) {
                 char buf[STRLEN];
                 StringBuffer_T sb = StringBuffer_create(256);
+                if(ACTION(STATUS)) {
+                  if(Str_startsWith(stringFormat, "xml2")) version = 2; else version = 1;
+                }
                 status_xml(sb, NULL, version, Socket_getLocalHost(req->S, buf, sizeof(buf)));
                 StringBuffer_append(res->outputbuffer, "%s", StringBuffer_toString(sb));
                 StringBuffer_free(&sb);
                 set_content_type(res, "text/xml");
+        } else if (stringFormat && Str_startsWith(stringFormat, "json")) {
+                char buf[STRLEN];
+                StringBuffer_T sb = StringBuffer_create(256);
+                if(ACTION(STATUS)) {
+                  if(Str_startsWith(stringFormat, "json2")) version = 2; else version = 1;
+                }
+                status_json(sb, NULL, version, Socket_getLocalHost(req->S, buf, sizeof(buf)));
+                StringBuffer_append(res->outputbuffer, "%s", StringBuffer_toString(sb));
+                StringBuffer_free(&sb);
+                set_content_type(res, "application/json");
         } else {
                 set_content_type(res, "text/plain");
 
