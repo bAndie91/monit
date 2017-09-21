@@ -133,6 +133,7 @@ static void check_request_checksum(Socket_T socket, int content_length, char *ch
         md5_context_t ctx_md5;
         sha1_context_t ctx_sha1;
         char buf[8192];
+        int remaining_length = content_length;
 
         if (content_length <= 0) {
                 DEBUG("HTTP warning: Response does not contain a valid Content-Length -- cannot compute checksum\n");
@@ -142,22 +143,22 @@ static void check_request_checksum(Socket_T socket, int content_length, char *ch
         switch (hashtype) {
                 case Hash_Md5:
                         md5_init(&ctx_md5);
-                        while (content_length > 0) {
-                                if ((n = Socket_read(socket, buf, content_length > sizeof(buf) ? sizeof(buf) : content_length)) < 0)
-                                        break;
+                        while (remaining_length > 0) {
+                                if ((n = Socket_read(socket, buf, remaining_length > sizeof(buf) ? sizeof(buf) : remaining_length)) <= 0)
+                                        THROW(IOException, "HTTP checksum error: Can not read all %d bytes of document", content_length);
                                 md5_append(&ctx_md5, (const md5_byte_t *)buf, n);
-                                content_length -= n;
+                                remaining_length -= n;
                         }
                         md5_finish(&ctx_md5, (md5_byte_t *)hash);
                         keylength = 16; /* Raw key bytes not string chars! */
                         break;
                 case Hash_Sha1:
                         sha1_init(&ctx_sha1);
-                        while (content_length > 0) {
-                                if ((n = Socket_read(socket, buf, content_length > sizeof(buf) ? sizeof(buf) : content_length)) < 0)
+                        while (remaining_length > 0) {
+                                if ((n = Socket_read(socket, buf, remaining_length > sizeof(buf) ? sizeof(buf) : remaining_length)) < 0)
                                         break;
                                 sha1_append(&ctx_sha1, (md5_byte_t *)buf, n);
-                                content_length -= n;
+                                remaining_length -= n;
                         }
                         sha1_finish(&ctx_sha1, (md5_byte_t *)hash);
                         keylength = 20; /* Raw key bytes not string chars! */
@@ -196,7 +197,18 @@ static void check_request(Socket_T socket, Port_T P) {
                                 THROW(IOException, "HTTP error: Parsing Content-Length response header '%s'", buf);
                         if (content_length < 0)
                                 THROW(IOException, "HTTP error: Illegal Content-Length response header '%s'", buf);
+                        if(P->parameters.http.content_length.length >= 0)
+                        {
+                                if(!Util_evalQExpression(content_length, P->parameters.http.content_length.operator, P->parameters.http.content_length.length))
+                                {
+                                        THROW(IOException, "HTTP content length mismatch -- received %d", content_length);
+                                }
+                        }
                 }
+        }
+        if(content_length < 0 && P->parameters.http.content_length.length >= 0)
+        {
+                THROW(IOException, "HTTP content length missing");
         }
         /* FIXME:
          * we read the data from the socket inside do_regex() and also check_request_checksum() independently => these two cannot be used together - only one wil read the data. Refactor the spaghetti code and consolidate the read
@@ -210,7 +222,12 @@ static void check_request(Socket_T socket, Port_T P) {
         if (P->url_request && P->url_request->regex)
                 do_regex(socket, content_length, P->url_request);
         if (P->parameters.http.checksum)
+        {
+                if(P->parameters.http.checksum_data_length > 0)
+                        if(content_length < 0 || content_length > P->parameters.http.checksum_data_length)
+                                content_length = P->parameters.http.checksum_data_length;
                 check_request_checksum(socket, content_length, P->parameters.http.checksum, P->parameters.http.hashtype);
+        }
 }
 
 
@@ -237,12 +254,14 @@ void check_http(Socket_T socket) {
         StringBuffer_T sb = StringBuffer_create(168);
         char *auth = get_auth_header(P);
         StringBuffer_append(sb,
-                            "%s %s HTTP/1.1\r\n"
+                            "%s %s HTTP/%d.%d\r\n"
                             "Accept: */*\r\n"
                             "Connection: close\r\n"
                             "%s",
                             ((P->url_request && P->url_request->regex) || P->parameters.http.checksum) ? "GET" : "HEAD",
                             P->parameters.http.request ? P->parameters.http.request : "/",
+                            P->parameters.http.version.major,
+                            P->parameters.http.version.minor,
                             auth ? auth : "");
         FREE(auth);
         if (! _hasHeader(P->parameters.http.headers, "Host"))
