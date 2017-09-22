@@ -183,6 +183,8 @@ capacity          {/* EMPTY */}
 option(s)?        {/* EMPTY */}
 first             {/* EMPTY */}
 until             {/* EMPTY */}
+within            {/* EMPTY */}
+upto              {/* EMPTY */}
 
 {startarg}        { BEGIN(ARGUMENT_COND); return START; }
 {stoparg}         { BEGIN(ARGUMENT_COND); return STOP; }

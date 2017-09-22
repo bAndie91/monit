@@ -251,7 +251,7 @@ static const char* _get_request_groupname(HttpRequest req)
 {
 	return Util_urlDecode((char *)get_parameter(req, "group"));
 }
-#define IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s) if(s->error==0&&get_parameter(req,"fails")){continue;}
+#define IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s) if(s->error==0&&s->monitor==Monitor_Yes&&get_parameter(req,"fails")){continue;}
 
 
 static char *_getUptime(time_t delta, char s[256]) {

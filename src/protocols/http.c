@@ -208,7 +208,7 @@ static void check_request(Socket_T socket, Port_T P) {
         }
         if(content_length < 0 && P->parameters.http.content_length.length >= 0)
         {
-                THROW(IOException, "HTTP content length missing");
+                THROW(IOException, "HTTP error: Content-Length is missing");
         }
         /* FIXME:
          * we read the data from the socket inside do_regex() and also check_request_checksum() independently => these two cannot be used together - only one wil read the data. Refactor the spaghetti code and consolidate the read
