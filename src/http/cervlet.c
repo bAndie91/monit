@@ -585,7 +585,7 @@ static void do_head(HttpRequest req, HttpResponse res, const char *path, const c
         	StringBuffer_append(res->outputbuffer,
         		"<style type=\"text/css\"> "\
         		"table#header-row.monit-embedded{border-collapse:collapse}"\
-        		"table#header-row.monit-embedded th,table#header-row.monit-embedded td{border:1px solid black;}"\
+        		"table#header-row.monit-embedded th,table#header-row.monit-embedded td{border:1px solid black;padding:0 2px 0 2px}"\
         		"</style>"
         	);
         	if(get_parameter(req, "base"))
@@ -1267,6 +1267,8 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
 }
 
 
+#define MACRO_SERVICE_HREF_PREFIX (get_parameter(req,"embedded")&&get_parameter(req,"base")?get_parameter(req,"base"):"")
+
 static void do_home_system(HttpRequest req, HttpResponse res) {
         Service_T s = Run.system;
         char buf[STRLEN];
@@ -1289,8 +1291,9 @@ static void do_home_system(HttpRequest req, HttpResponse res) {
         StringBuffer_append(res->outputbuffer,
                             "</tr>"
                             "<tr class='stripe'>"
-                            "<td align='left'><a href='%s'>%s</a></td>"
+                            "<td align='left'><a href='%s%s'>%s</a></td>"
                             "<td align='left'>%s</td>",
+                            MACRO_SERVICE_HREF_PREFIX,
                             s->name, s->name,
                             get_service_status(HTML, s, buf, sizeof(buf)));
         if (Run.flags & Run_ProcessEngineEnabled) {
@@ -1349,9 +1352,10 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.process.uptime < 0)
@@ -1400,9 +1404,10 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
@@ -1471,9 +1476,10 @@ static void do_home_net(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || Link_getState(s->inf->priv.net.stats) != 1) {
@@ -1514,9 +1520,10 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
@@ -1572,9 +1579,10 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.file.size < 0)
@@ -1625,9 +1633,10 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.fifo.mode < 0)
@@ -1674,9 +1683,10 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.directory.mode < 0)
@@ -1721,9 +1731,10 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
