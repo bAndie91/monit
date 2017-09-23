@@ -183,7 +183,6 @@ capacity          {/* EMPTY */}
 option(s)?        {/* EMPTY */}
 first             {/* EMPTY */}
 until             {/* EMPTY */}
-within            {/* EMPTY */}
 upto              {/* EMPTY */}
 
 {startarg}        { BEGIN(ARGUMENT_COND); return START; }
@@ -411,8 +410,8 @@ credentials       { return CREDENTIALS; }
 register          { return REGISTER; }
 fsflag(s)?        { return FSFLAG; }
 fips              { return FIPS; }
-http_1_0          { return HTTP_1_0; }
-http_1_1          { return HTTP_1_1; }
+http"/1.0"        { return HTTP_1_0; }
+http"/1.1"        { return HTTP_1_1; }
 length            { return LENGTH; }
 {byte}            { return BYTE; }
 {kilobyte}        { return KILOBYTE; }

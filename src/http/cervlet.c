@@ -253,6 +253,16 @@ static const char* _get_request_groupname(HttpRequest req)
 }
 #define IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s) if(s->error==0&&s->monitor==Monitor_Yes&&get_parameter(req,"fails")){continue;}
 
+StringBuffer_T _formatProtocolNameVersion(Port_T port)
+{
+        StringBuffer_T protocol_name_version = StringBuffer_create(8);
+        StringBuffer_append(protocol_name_version, port->protocol->name);
+        if(IS(port->protocol->name, "HTTP")) {
+                StringBuffer_append(protocol_name_version, "/%d.%d", port->parameters.http.version.major, port->parameters.http.version.minor);
+        }
+        return protocol_name_version;
+}
+
 
 static char *_getUptime(time_t delta, char s[256]) {
         static int min = 60;
@@ -450,18 +460,22 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
                                 _formatStatus("ping response time", Event_Null, type, res, s, i->is_available != Connection_Init && i->response >= 0., "%s", Str_milliToTime(i->response, (char[23]){}));
                 }
                 for (Port_T p = s->portlist; p; p = p->next) {
+                        StringBuffer_T protocol_name_version = _formatProtocolNameVersion(p);
                         if (p->is_available == Connection_Failed) {
-                                _formatStatus("port response time", Event_Connection, type, res, s, true, "FAILED to [%s]:%d%s type %s/%s %sprotocol %s", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                                _formatStatus("port response time", Event_Connection, type, res, s, true, "FAILED to [%s]:%d%s type %s/%s %sprotocol %s", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", StringBuffer_toString(protocol_name_version));
                         } else {
-                                _formatStatus("port response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                                _formatStatus("port response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", StringBuffer_toString(protocol_name_version));
                         }
+                        StringBuffer_free(&protocol_name_version);
                 }
                 for (Port_T p = s->socketlist; p; p = p->next) {
+                        StringBuffer_T protocol_name_version = _formatProtocolNameVersion(p);
                         if (p->is_available == Connection_Failed) {
-                                _formatStatus("unix socket response time", Event_Connection, type, res, s, true, "FAILED to %s type %s protocol %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                                _formatStatus("unix socket response time", Event_Connection, type, res, s, true, "FAILED to %s type %s protocol %s", p->target.unix.pathname, Util_portTypeDescription(p), StringBuffer_toString(protocol_name_version));
                         } else {
-                                _formatStatus("unix socket response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                                _formatStatus("unix socket response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), StringBuffer_toString(protocol_name_version));
                         }
+                        StringBuffer_free(&protocol_name_version);
                 }
         }
         _formatStatus("data collected", Event_Null, type, res, s, true, "%s", Time_string(s->collected.tv_sec, (char[32]){}));
@@ -1895,6 +1909,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Port</td><td>");
                 StringBuffer_T buf = StringBuffer_create(64);
                 StringBuffer_append(buf, "If failed ");
+                StringBuffer_T protocol_name_version = _formatProtocolNameVersion(p);
                 if (IS(p->protocol->name, "HTTP"))
                         StringBuffer_append(buf, "<a href=\"http%s://%s:%d%s\">",
 #ifdef HAVE_OPENSSL
@@ -1910,7 +1925,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
                 if (p->outgoing.ip)
                         StringBuffer_append(buf, " via address %s", p->outgoing.ip);
                 StringBuffer_append(buf, " type %s/%s protocol %s with timeout %s",
-                        Util_portTypeDescription(p), Util_portIpDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}));
+                        Util_portTypeDescription(p), Util_portIpDescription(p), StringBuffer_toString(protocol_name_version), Str_milliToTime(p->timeout, (char[23]){}));
                 if (p->retry > 1)
                         StringBuffer_append(buf, " and retry %d times", p->retry);
 #ifdef HAVE_OPENSSL
@@ -1927,6 +1942,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
 #endif
                 Util_printRule(res->outputbuffer, p->action, "%s", StringBuffer_toString(buf));
                 StringBuffer_free(&buf);
+                StringBuffer_free(&protocol_name_version);
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
 }
@@ -1934,12 +1950,14 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
 
 static void print_service_rules_socket(HttpResponse res, Service_T s) {
         for (Port_T p = s->socketlist; p; p = p->next) {
+                StringBuffer_T protocol_name_version = _formatProtocolNameVersion(p);
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Unix Socket</td><td>");
                 if (p->retry > 1)
-                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s and retry %d time(s)", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}), p->retry);
+                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s and retry %d time(s)", p->target.unix.pathname, Util_portTypeDescription(p), StringBuffer_toString(protocol_name_version), Str_milliToTime(p->timeout, (char[23]){}), p->retry);
                 else
-                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}));
+                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s", p->target.unix.pathname, Util_portTypeDescription(p), StringBuffer_toString(protocol_name_version), Str_milliToTime(p->timeout, (char[23]){}));
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
+                StringBuffer_free(&protocol_name_version);
         }
 }
 
