@@ -249,7 +249,7 @@ static boolean_t _is_in_group(Service_T s, const char* groupname)
 }
 static const char* _get_request_groupname(HttpRequest req)
 {
-	return Util_urlDecode((char *)get_parameter(req, "group"));
+	return get_parameter(req, "group");
 }
 #define IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s) if(s->error==0&&s->monitor==Monitor_Yes&&get_parameter(req,"fails")){continue;}
 
@@ -580,7 +580,20 @@ static void printFavicon(HttpResponse res) {
 static void do_head(HttpRequest req, HttpResponse res, const char *path, const char *name, int refresh) {
         unsigned int up = 0;
         unsigned int all = 0;
-        if(get_parameter(req, "embedded")) return;
+        if(get_parameter(req, "embedded"))
+        {
+        	StringBuffer_append(res->outputbuffer,
+        		"<style type=\"text/css\"> "\
+        		"table#header-row.monit-embedded{border-collapse:collapse}"\
+        		"table#header-row.monit-embedded th,table#header-row.monit-embedded td{border:1px solid black;}"\
+        		"</style>"
+        	);
+        	if(get_parameter(req, "base"))
+        		StringBuffer_append(res->outputbuffer,
+        			"<base href=\"%s\">", get_parameter(req, "base")
+        		);
+        	return;
+        }
         
         for (Service_T s = servicelist; s; s = s->next) {
         	IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
@@ -705,7 +718,7 @@ static void do_home(HttpRequest req, HttpResponse res) {
 static void do_groups(HttpRequest req, HttpResponse res) {
         do_head(req, res, "./_groups", "Groups", Run.polltime);
         StringBuffer_append(res->outputbuffer,
-                            "<table id='header-row'>"
+                            "<table id='header-row' class='monit-embedded'>"
                             "<tr>"
                             "<th align='left' class='first'>Group</th>"
                             "<th align='right' class='first'>Running ratio</th>"
@@ -1261,7 +1274,7 @@ static void do_home_system(HttpRequest req, HttpResponse res) {
         if(get_parameter(req, "fails")) return;
         
         StringBuffer_append(res->outputbuffer,
-                            "<table id='header-row'>"
+                            "<table id='header-row' class='monit-embedded'>"
                             "<tr>"
                             "<th align='left' class='first'>System</th>"
                             "<th align='left'>Status</th>");
@@ -1321,7 +1334,7 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Process</th>"
                                             "<th align='left'>Status</th>"
@@ -1375,7 +1388,7 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Program</th>"
                                             "<th align='left'>Status</th>"
@@ -1447,7 +1460,7 @@ static void do_home_net(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Net</th>"
                                             "<th align='left'>Status</th>"
@@ -1490,7 +1503,7 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Filesystem</th>"
                                             "<th align='left'>Status</th>"
@@ -1545,7 +1558,7 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>File</th>"
                                             "<th align='left'>Status</th>"
@@ -1600,7 +1613,7 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Fifo</th>"
                                             "<th align='left'>Status</th>"
@@ -1649,7 +1662,7 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Directory</th>"
                                             "<th align='left'>Status</th>"
@@ -1698,7 +1711,7 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Host</th>"
                                             "<th align='left'>Status</th>"
@@ -2397,8 +2410,8 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
                 StringBuffer_append(res->outputbuffer, "Monit %s uptime: %s\n\n", VERSION, _getUptime(ProcessTree_getProcessUptime(getpid()), (char[256]){}));
 
                 int found = 0;
-                const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
-                const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
+                const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));  // TODO: parameters are already url-decoded
+                const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));  // TODO: parameters are already url-decoded
                 if (stringGroup) {
                         for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                                 if (IS(stringGroup, sg->name)) {
@@ -2455,8 +2468,8 @@ static void print_summary(HttpRequest req, HttpResponse res) {
         StringBuffer_append(res->outputbuffer, "Monit %s uptime: %s\n", VERSION, _getUptime(ProcessTree_getProcessUptime(getpid()), (char[256]){}));
 
         int found = 0;
-        const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
-        const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
+        const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));  // TODO: parameters are already url-decoded
+        const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));  // TODO: parameters are already url-decoded
         Box_T t = Box_new(res->outputbuffer, 3, (BoxColumn_T []){
                         {.name = "Service Name", .width = 31, .wrap = false, .align = BoxAlign_Left},
                         {.name = "Status",       .width = 26, .wrap = false, .align = BoxAlign_Left},
@@ -2504,7 +2517,7 @@ static void print_summary(HttpRequest req, HttpResponse res) {
 static void _printReport(HttpRequest req, HttpResponse res) {
         set_content_type(res, "text/plain");
         const char *type = get_parameter(req, "type");
-        const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
+        const char *stringGroup = get_parameter(req, "group");
         int count = 0;
         if (! type) {
                 float up = 0, down = 0, init = 0, unmonitored = 0, total = 0;

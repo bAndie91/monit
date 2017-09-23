@@ -86,13 +86,6 @@
  *  reponse to so called cervlets, which must implement two methods;
  *  doGet and doPost.
  *
- *  NOTES
- *    This Processor is command oriented and if a second slash '/' is
- *    found in the URL it's asumed to be the PATHINFO. In other words
- *    this processor perceive an URL as:
- *
- *                      /COMMAND?QUERYSTRING/PATHINFO
- *
  *     The doGet/doPost routines act's on the COMMAND. See the
  *     cervlet.c code in this dir. for an example.
  *
@@ -535,7 +528,7 @@ static HttpRequest create_HttpRequest(Socket_T S) {
         HttpRequest req = NULL;
         NEW(req);
         req->S = S;
-        Util_urlDecode(url);
+        Util_urlDecode(url);  // TODO: must decode *after* tokenize PATH and GET parameters
         req->url = Str_dup(url);
         req->method = Str_dup(method);
         req->protocol = Str_dup(protocol);
@@ -617,11 +610,6 @@ static boolean_t create_parameters(HttpRequest req) {
         }
         if (query_string) {
                 if (*query_string) {
-                        char *p = strchr(query_string, '/');
-                        if (p) {
-                                *p++ = 0;
-                                req->pathinfo = Str_dup(p);
-                        }
                         req->params = parse_parameters(query_string);
                 }
                 FREE(query_string);
@@ -661,7 +649,6 @@ static void destroy_HttpRequest(HttpRequest req) {
         if (req) {
                 FREE(req->method);
                 FREE(req->url);
-                FREE(req->pathinfo);
                 FREE(req->protocol);
                 FREE(req->remote_user);
                 if (req->headers)

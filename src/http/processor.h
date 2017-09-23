@@ -73,7 +73,6 @@ typedef struct request {
         Socket_T S;
         char *method;
         char *protocol;
-        char *pathinfo;
         char *remote_user;
         HttpHeader headers;
         HttpParameter params;
