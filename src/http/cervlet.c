@@ -1733,7 +1733,10 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
                                                 StringBuffer_append(res->outputbuffer, "<span class='red-text'>[%s] at port %d</span>", port->protocol->name, port->target.net.port);
                                                 break;
                                         default:
-                                                StringBuffer_append(res->outputbuffer, "<span>[%s] at port %d</span>", port->protocol->name, port->target.net.port);
+                                                if(!get_parameter(req,"fails"))
+                                                {
+                                                        StringBuffer_append(res->outputbuffer, "<span>[%s] at port %d</span>", port->protocol->name, port->target.net.port);
+                                                }
                                                 break;
                                 }
                         }
