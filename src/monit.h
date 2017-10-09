@@ -642,6 +642,15 @@ typedef struct myport {
                         char *request;                                          /**< HTTP request */
                         char *checksum;                         /**< Document checksum (optional) */
                         List_T headers;      /**< List of headers to send with request (optional) */
+                        struct {
+                                char major;
+                                char minor;
+                        } version;
+                        struct {
+                                Operator_Type operator;
+                                long long length;
+                        } content_length;
+                        size_t checksum_data_length;
                 } http;
                 struct {
                         char *username;

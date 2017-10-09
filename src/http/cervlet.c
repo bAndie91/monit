@@ -249,9 +249,19 @@ static boolean_t _is_in_group(Service_T s, const char* groupname)
 }
 static const char* _get_request_groupname(HttpRequest req)
 {
-	return Util_urlDecode((char *)get_parameter(req, "group"));
+	return get_parameter(req, "group");
 }
-#define IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s) if(s->error==0&&get_parameter(req,"fails")){continue;}
+#define IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s) if(s->error==0&&s->monitor==Monitor_Yes&&get_parameter(req,"fails")){continue;}
+
+StringBuffer_T _formatProtocolNameVersion(Port_T port)
+{
+        StringBuffer_T protocol_name_version = StringBuffer_create(8);
+        StringBuffer_append(protocol_name_version, port->protocol->name);
+        if(IS(port->protocol->name, "HTTP")) {
+                StringBuffer_append(protocol_name_version, "/%d.%d", port->parameters.http.version.major, port->parameters.http.version.minor);
+        }
+        return protocol_name_version;
+}
 
 
 static char *_getUptime(time_t delta, char s[256]) {
@@ -450,18 +460,22 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
                                 _formatStatus("ping response time", Event_Null, type, res, s, i->is_available != Connection_Init && i->response >= 0., "%s", Str_milliToTime(i->response, (char[23]){}));
                 }
                 for (Port_T p = s->portlist; p; p = p->next) {
+                        StringBuffer_T protocol_name_version = _formatProtocolNameVersion(p);
                         if (p->is_available == Connection_Failed) {
-                                _formatStatus("port response time", Event_Connection, type, res, s, true, "FAILED to [%s]:%d%s type %s/%s %sprotocol %s", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                                _formatStatus("port response time", Event_Connection, type, res, s, true, "FAILED to [%s]:%d%s type %s/%s %sprotocol %s", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", StringBuffer_toString(protocol_name_version));
                         } else {
-                                _formatStatus("port response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                                _formatStatus("port response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", StringBuffer_toString(protocol_name_version));
                         }
+                        StringBuffer_free(&protocol_name_version);
                 }
                 for (Port_T p = s->socketlist; p; p = p->next) {
+                        StringBuffer_T protocol_name_version = _formatProtocolNameVersion(p);
                         if (p->is_available == Connection_Failed) {
-                                _formatStatus("unix socket response time", Event_Connection, type, res, s, true, "FAILED to %s type %s protocol %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                                _formatStatus("unix socket response time", Event_Connection, type, res, s, true, "FAILED to %s type %s protocol %s", p->target.unix.pathname, Util_portTypeDescription(p), StringBuffer_toString(protocol_name_version));
                         } else {
-                                _formatStatus("unix socket response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                                _formatStatus("unix socket response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), StringBuffer_toString(protocol_name_version));
                         }
+                        StringBuffer_free(&protocol_name_version);
                 }
         }
         _formatStatus("data collected", Event_Null, type, res, s, true, "%s", Time_string(s->collected.tv_sec, (char[32]){}));
@@ -566,7 +580,20 @@ static void printFavicon(HttpResponse res) {
 static void do_head(HttpRequest req, HttpResponse res, const char *path, const char *name, int refresh) {
         unsigned int up = 0;
         unsigned int all = 0;
-        if(get_parameter(req, "embedded")) return;
+        if(get_parameter(req, "embedded"))
+        {
+        	StringBuffer_append(res->outputbuffer,
+        		"<style type=\"text/css\"> "\
+        		"table#header-row.monit-embedded{border-collapse:collapse}"\
+        		"table#header-row.monit-embedded th,table#header-row.monit-embedded td{border:1px solid black;padding:0 2px 0 2px}"\
+        		"</style>"
+        	);
+        	if(get_parameter(req, "base"))
+        		StringBuffer_append(res->outputbuffer,
+        			"<base href=\"%s\">", get_parameter(req, "base")
+        		);
+        	return;
+        }
         
         for (Service_T s = servicelist; s; s = s->next) {
         	IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
@@ -691,7 +718,7 @@ static void do_home(HttpRequest req, HttpResponse res) {
 static void do_groups(HttpRequest req, HttpResponse res) {
         do_head(req, res, "./_groups", "Groups", Run.polltime);
         StringBuffer_append(res->outputbuffer,
-                            "<table id='header-row'>"
+                            "<table id='header-row' class='monit-embedded'>"
                             "<tr>"
                             "<th align='left' class='first'>Group</th>"
                             "<th align='right' class='first'>Running ratio</th>"
@@ -1240,6 +1267,8 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
 }
 
 
+#define MACRO_SERVICE_HREF_PREFIX (get_parameter(req,"embedded")&&get_parameter(req,"base")?get_parameter(req,"base"):"")
+
 static void do_home_system(HttpRequest req, HttpResponse res) {
         Service_T s = Run.system;
         char buf[STRLEN];
@@ -1247,7 +1276,7 @@ static void do_home_system(HttpRequest req, HttpResponse res) {
         if(get_parameter(req, "fails")) return;
         
         StringBuffer_append(res->outputbuffer,
-                            "<table id='header-row'>"
+                            "<table id='header-row' class='monit-embedded'>"
                             "<tr>"
                             "<th align='left' class='first'>System</th>"
                             "<th align='left'>Status</th>");
@@ -1262,8 +1291,9 @@ static void do_home_system(HttpRequest req, HttpResponse res) {
         StringBuffer_append(res->outputbuffer,
                             "</tr>"
                             "<tr class='stripe'>"
-                            "<td align='left'><a href='%s'>%s</a></td>"
+                            "<td align='left'><a href='%s%s'>%s</a></td>"
                             "<td align='left'>%s</td>",
+                            MACRO_SERVICE_HREF_PREFIX,
                             s->name, s->name,
                             get_service_status(HTML, s, buf, sizeof(buf)));
         if (Run.flags & Run_ProcessEngineEnabled) {
@@ -1307,7 +1337,7 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Process</th>"
                                             "<th align='left'>Status</th>"
@@ -1322,9 +1352,10 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.process.uptime < 0)
@@ -1361,7 +1392,7 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Program</th>"
                                             "<th align='left'>Status</th>"
@@ -1373,9 +1404,10 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
@@ -1433,7 +1465,7 @@ static void do_home_net(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Net</th>"
                                             "<th align='left'>Status</th>"
@@ -1444,9 +1476,10 @@ static void do_home_net(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || Link_getState(s->inf->priv.net.stats) != 1) {
@@ -1476,7 +1509,7 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Filesystem</th>"
                                             "<th align='left'>Status</th>"
@@ -1487,9 +1520,10 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
@@ -1531,7 +1565,7 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>File</th>"
                                             "<th align='left'>Status</th>"
@@ -1545,9 +1579,10 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.file.size < 0)
@@ -1586,7 +1621,7 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Fifo</th>"
                                             "<th align='left'>Status</th>"
@@ -1598,9 +1633,10 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.fifo.mode < 0)
@@ -1635,7 +1671,7 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Directory</th>"
                                             "<th align='left'>Status</th>"
@@ -1647,9 +1683,10 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.directory.mode < 0)
@@ -1684,7 +1721,7 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
                 IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
                 if (header) {
                         StringBuffer_append(res->outputbuffer,
-                                            "<table id='header-row'>"
+                                            "<table id='header-row' class='monit-embedded'>"
                                             "<tr>"
                                             "<th align='left' class='first'>Host</th>"
                                             "<th align='left'>Status</th>"
@@ -1694,9 +1731,10 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
-                                    "<td align='left'><a href='%s'>%s</a></td>"
+                                    "<td align='left'><a href='%s%s'>%s</a></td>"
                                     "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
+                                    MACRO_SERVICE_HREF_PREFIX,
                                     s->name, s->name,
                                     get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
@@ -1898,6 +1936,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Port</td><td>");
                 StringBuffer_T buf = StringBuffer_create(64);
                 StringBuffer_append(buf, "If failed ");
+                StringBuffer_T protocol_name_version = _formatProtocolNameVersion(p);
                 if (IS(p->protocol->name, "HTTP"))
                         StringBuffer_append(buf, "<a href=\"http%s://%s:%d%s\">",
 #ifdef HAVE_OPENSSL
@@ -1913,7 +1952,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
                 if (p->outgoing.ip)
                         StringBuffer_append(buf, " via address %s", p->outgoing.ip);
                 StringBuffer_append(buf, " type %s/%s protocol %s with timeout %s",
-                        Util_portTypeDescription(p), Util_portIpDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}));
+                        Util_portTypeDescription(p), Util_portIpDescription(p), StringBuffer_toString(protocol_name_version), Str_milliToTime(p->timeout, (char[23]){}));
                 if (p->retry > 1)
                         StringBuffer_append(buf, " and retry %d times", p->retry);
 #ifdef HAVE_OPENSSL
@@ -1930,6 +1969,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
 #endif
                 Util_printRule(res->outputbuffer, p->action, "%s", StringBuffer_toString(buf));
                 StringBuffer_free(&buf);
+                StringBuffer_free(&protocol_name_version);
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
 }
@@ -1937,12 +1977,14 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
 
 static void print_service_rules_socket(HttpResponse res, Service_T s) {
         for (Port_T p = s->socketlist; p; p = p->next) {
+                StringBuffer_T protocol_name_version = _formatProtocolNameVersion(p);
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Unix Socket</td><td>");
                 if (p->retry > 1)
-                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s and retry %d time(s)", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}), p->retry);
+                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s and retry %d time(s)", p->target.unix.pathname, Util_portTypeDescription(p), StringBuffer_toString(protocol_name_version), Str_milliToTime(p->timeout, (char[23]){}), p->retry);
                 else
-                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}));
+                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s", p->target.unix.pathname, Util_portTypeDescription(p), StringBuffer_toString(protocol_name_version), Str_milliToTime(p->timeout, (char[23]){}));
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
+                StringBuffer_free(&protocol_name_version);
         }
 }
 
@@ -2382,8 +2424,8 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
                 StringBuffer_append(res->outputbuffer, "Monit %s uptime: %s\n\n", VERSION, _getUptime(ProcessTree_getProcessUptime(getpid()), (char[256]){}));
 
                 int found = 0;
-                const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
-                const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
+                const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));  // TODO: parameters are already url-decoded
+                const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));  // TODO: parameters are already url-decoded
                 if (stringGroup) {
                         for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                                 if (IS(stringGroup, sg->name)) {
@@ -2440,8 +2482,8 @@ static void print_summary(HttpRequest req, HttpResponse res) {
         StringBuffer_append(res->outputbuffer, "Monit %s uptime: %s\n", VERSION, _getUptime(ProcessTree_getProcessUptime(getpid()), (char[256]){}));
 
         int found = 0;
-        const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
-        const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
+        const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));  // TODO: parameters are already url-decoded
+        const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));  // TODO: parameters are already url-decoded
         Box_T t = Box_new(res->outputbuffer, 3, (BoxColumn_T []){
                         {.name = "Service Name", .width = 31, .wrap = false, .align = BoxAlign_Left},
                         {.name = "Status",       .width = 26, .wrap = false, .align = BoxAlign_Left},
@@ -2489,7 +2531,7 @@ static void print_summary(HttpRequest req, HttpResponse res) {
 static void _printReport(HttpRequest req, HttpResponse res) {
         set_content_type(res, "text/plain");
         const char *type = get_parameter(req, "type");
-        const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
+        const char *stringGroup = get_parameter(req, "group");
         int count = 0;
         if (! type) {
                 float up = 0, down = 0, init = 0, unmonitored = 0, total = 0;
