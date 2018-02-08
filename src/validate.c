@@ -161,12 +161,12 @@ retry:
                 /* Guess Event type from Exception message heuristically. */
                 regex_t *regex;
                 NEW(regex);
-                regcomp(regex, "checksum", REG_NOSUB|REG_EXTENDED);
+                regcomp(regex, "checksum", REG_NOSUB|REG_EXTENDED|REG_ICASE);
                 event_postend = Event_Connection;
                 if(regexec(regex, Exception_frame.message, 0, NULL, 0) == 0) {
                     event_postend = Event_Checksum;
                 } else {
-                    regcomp(regex, "match", REG_NOSUB|REG_EXTENDED);
+                    regcomp(regex, "match|content", REG_NOSUB|REG_EXTENDED|REG_ICASE);
                     if(regexec(regex, Exception_frame.message, 0, NULL, 0) == 0) {
                         event_postend = Event_Content;
                     }

@@ -348,6 +348,8 @@ static int verifyMaxForward(int);
 %token <string> TARGET TIMESPEC HTTPHEADER
 %token <number> MAXFORWARD
 %token FIPS
+%token HTTP_1_0 HTTP_1_1
+%token LENGTH
 
 %left GREATER GREATEROREQUAL LESS LESSOREQUAL EQUAL NOTEQUAL
 
@@ -1699,7 +1701,11 @@ sip             : target {
                   }
                 ;
 
-httplist        : /* EMPTY */
+httplist        : /* EMPTY */ {
+                        portset.parameters.http.version.major = 1;
+                        portset.parameters.http.version.minor = 1;
+                        portset.parameters.http.content_length.length = -1;
+                  }
                 | httplist http
                 ;
 
@@ -1710,10 +1716,22 @@ http            : username {
                         portset.parameters.http.password = $<string>1;
                   }
                 | request
+                | httpversion
                 | responsesum
+                | responselength
                 | status
                 | hostheader
                 | '[' httpheaderlist ']'
+                ;
+
+httpversion     : HTTP_1_0 {
+                    portset.parameters.http.version.major = 1;
+                    portset.parameters.http.version.minor = 0;
+                  }
+                | HTTP_1_1 {
+                    portset.parameters.http.version.major = 1;
+                    portset.parameters.http.version.minor = 1;
+                  }
                 ;
 
 status          : STATUS operator NUMBER {
@@ -1728,8 +1746,20 @@ request         : REQUEST PATH {
                   }
                 ;
 
-responsesum     : CHECKSUM STRING {
+responsesum     : CHECKSUM STRING responsesumsize {
                     portset.parameters.http.checksum = $2;
+                  }
+                ;
+responsesumsize : /* EMPTY */
+                | SIZE NUMBER {
+                    portset.parameters.http.checksum_data_length = $<number>2;
+                  }
+                ;
+
+
+responselength  : LENGTH operator NUMBER {
+                    portset.parameters.http.content_length.operator = $<number>2;
+                    portset.parameters.http.content_length.length = $<number>3;
                   }
                 ;
 
