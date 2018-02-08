@@ -488,7 +488,7 @@ typedef struct myregexpmatch {
 /** Defines a HTTP client request object */
 typedef struct myrequest {
         URL_T url;                                               /**< URL request */
-        RegexpMatch_T *match;
+        RegexpMatch_T match;
 } *Request_T;
 
 

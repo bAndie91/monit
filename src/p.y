@@ -3966,8 +3966,8 @@ static void prepare_urlrequest(URL_T U) {
  */
 static void  addurlrequestmatch(int operator, char *regex) {
         int reg_return;
-        RegexpMatch_T *next_match;
-        RegexpMatch_T *match;
+        RegexpMatch_T next_match;
+        RegexpMatch_T match;
         
         ASSERT(regex);
 

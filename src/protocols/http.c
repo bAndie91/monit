@@ -72,7 +72,7 @@ static boolean_t _hasHeader(List_T list, const char *name) {
 
 static void do_regex(Socket_T socket, int content_length, Request_T R) {
         boolean_t rv = true;
-        RegexpMatch_T *match;
+        RegexpMatch_T match;
         unsigned int no_match = 0;
 
         if (content_length == 0)
@@ -222,7 +222,7 @@ static void check_request(Socket_T socket, Port_T P) {
          * 2.) the read of chunked data is slowed downed by read delay (https://bitbucket.org/tildeslash/monit/issues/254/hosts-check-is-too-long)
          * I.e. implement support for Chunked encoding (see above FIXME comment - we should have one read function, which can be used to read data and reuse it for all tests)
          */
-        if (P->url_request && P->url_request->regex)
+        if (P->url_request && P->url_request->match)
                 do_regex(socket, content_length, P->url_request);
         if (P->parameters.http.checksum)
                 check_request_checksum(socket, content_length, P->parameters.http.checksum, P->parameters.http.hashtype);
@@ -256,7 +256,7 @@ void check_http(Socket_T socket) {
                             "Accept: */*\r\n"
                             "Connection: close\r\n"
                             "%s",
-                            ((P->url_request && P->url_request->regex) || P->parameters.http.checksum) ? "GET" : "HEAD",
+                            ((P->url_request && P->url_request->match) || P->parameters.http.checksum) ? "GET" : "HEAD",
                             P->parameters.http.request ? P->parameters.http.request : "/",
                             auth ? auth : "");
         FREE(auth);
