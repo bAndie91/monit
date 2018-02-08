@@ -263,7 +263,7 @@ static void  addeuid(uid_t);
 static void  addegid(gid_t);
 static void  addeventaction(EventAction_T *, Action_Type, Action_Type);
 static void  prepare_urlrequest(URL_T U);
-static void  seturlrequest(int, char *);
+static void  addurlrequestmatch(int, char *);
 static void  setlogfile(char *);
 static void  setpidfile(char *);
 static void  reset_sslset();
@@ -1925,7 +1925,7 @@ actionrate      : IF NUMBER RESTART NUMBER CYCLE THEN action1 {
                 ;
 
 urloption       : CONTENT urloperator STRING {
-                    seturlrequest($<number>2, $<string>3);
+                    addurlrequestmatch($<number>2, $<string>3);
                     FREE($3);
                   }
                 ;
@@ -3964,21 +3964,28 @@ static void prepare_urlrequest(URL_T U) {
 /*
  * Set the url request for a port
  */
-static void  seturlrequest(int operator, char *regex) {
-
+static void  addurlrequestmatch(int operator, char *regex) {
+        int reg_return;
+        RegexpMatch_T *next_match;
+        RegexpMatch_T *match;
+        
         ASSERT(regex);
 
         if (! urlrequest)
                 NEW(urlrequest);
-        urlrequest->operator = operator;
-        int reg_return;
-        NEW(urlrequest->regex);
-        reg_return = regcomp(urlrequest->regex, regex, REG_NOSUB|REG_EXTENDED);
+        NEW(next_match);
+        next_match->operator = operator;
+        NEW(next_match->regex);
+        reg_return = regcomp(next_match->regex, regex, REG_NOSUB|REG_EXTENDED);
         if (reg_return != 0) {
                 char errbuf[STRLEN];
-                regerror(reg_return, urlrequest->regex, errbuf, STRLEN);
+                regerror(reg_return, next_match->regex, errbuf, STRLEN);
                 yyerror2("Regex parsing error: %s", errbuf);
         }
+        next_match->next = NULL;
+        match = urlrequest->match;
+        while(match != NULL) match = match->next;
+        match->next = next_match;
 }
 
 
