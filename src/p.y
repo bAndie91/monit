@@ -4013,9 +4013,12 @@ static void  addurlrequestmatch(int operator, char *regex) {
                 yyerror2("Regex parsing error: %s", errbuf);
         }
         next_match->next = NULL;
-        match = urlrequest->match;
-        while(match != NULL) match = match->next;
-        match->next = next_match;
+        if(urlrequest->match == NULL)
+            urlrequest->match = next_match;
+        else {
+            for(match = urlrequest->match; match->next != NULL; match = match->next);
+            match->next = next_match;
+        }
 }
 
 
