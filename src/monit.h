@@ -477,11 +477,18 @@ typedef struct myurl {
 } *URL_T;
 
 
+typedef struct myregexpmatch {
+        Operator_Type operator;         /**< Response content comparison operator */
+        regex_t *regex;                   /* regex used to test the response body */
+        
+        struct myregexpmatch *next;
+} *RegexpMatch_T;
+
+
 /** Defines a HTTP client request object */
 typedef struct myrequest {
         URL_T url;                                               /**< URL request */
-        Operator_Type operator;         /**< Response content comparison operator */
-        regex_t *regex;                   /* regex used to test the response body */
+        RegexpMatch_T match;
 } *Request_T;
 
 

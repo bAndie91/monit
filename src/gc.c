@@ -287,12 +287,24 @@ static void _gc_servicegroup(ServiceGroup_T *sg) {
 
 
 static void _gc_request(Request_T *r) {
+        RegexpMatch_T match;
+        RegexpMatch_T match_next;
+        
         ASSERT(r);
         if ((*r)->url)
                 _gc_url(&(*r)->url);
-        if ((*r)->regex)
-                regfree((*r)->regex);
-        FREE((*r)->regex);
+        match = (*r)->match;
+        while(match != NULL)
+        {
+        	if(match->regex)
+        	{
+	        	regfree(match->regex);
+	        	FREE(match->regex);
+	        }
+	        match_next = match->next;
+	        FREE(match);
+	        match = match_next;
+        }
         FREE(*r);
 }
 

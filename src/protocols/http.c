@@ -71,7 +71,9 @@ static boolean_t _hasHeader(List_T list, const char *name) {
 
 
 static void do_regex(Socket_T socket, int content_length, Request_T R) {
-        boolean_t rv = false;
+        boolean_t rv = true;
+        RegexpMatch_T match;
+        unsigned int no_match = 0;
 
         if (content_length == 0)
                 THROW(IOException, "HTTP error: No content returned from server");
@@ -95,31 +97,44 @@ static void do_regex(Socket_T socket, int content_length, Request_T R) {
         }
         buf[size] = 0;
 
-        int regex_return = regexec(R->regex, buf, 0, NULL, 0);
-        FREE(buf);
-        switch (R->operator) {
+        match = R->match;
+        while(match)
+        {
+            int regex_return = regexec(match->regex, buf, 0, NULL, 0);
+            switch (match->operator) {
                 case Operator_Equal:
                         if (regex_return == 0) {
                                 rv = true;
-                                DEBUG("HTTP: Regular expression matches\n");
+                                DEBUG("HTTP: Regular expression #%u matches\n", no_match);
                         } else {
+                                rv = false;
                                 char errbuf[STRLEN];
                                 regerror(regex_return, NULL, errbuf, sizeof(errbuf));
-                                snprintf(error, sizeof(error), "Regular expression doesn't match: %s", errbuf);
+                                snprintf(error, sizeof(error), "Regular expression #%u doesn't match: %s", no_match, errbuf);
                         }
                         break;
                 case Operator_NotEqual:
                         if (regex_return == 0) {
-                                snprintf(error, sizeof(error), "Regular expression matches");
+                                rv = false;
+                                snprintf(error, sizeof(error), "Regular expression #%u matches", no_match);
                         } else {
                                 rv = true;
-                                DEBUG("HTTP: Regular expression doesn't match\n");
+                                DEBUG("HTTP: Regular expression #%u doesn't match\n", no_match);
                         }
                         break;
                 default:
-                        snprintf(error, sizeof(error), "Invalid content operator");
+                        rv = false;
+                        snprintf(error, sizeof(error), "Invalid content operator for regular expression #%u", no_match);
                         break;
+            }
+            
+            if(!rv)
+                break;
+            
+            match = match->next;
+            no_match++;
         }
+        FREE(buf);
 
 error:
         if (! rv)
@@ -219,7 +234,7 @@ static void check_request(Socket_T socket, Port_T P) {
          * 2.) the read of chunked data is slowed downed by read delay (https://bitbucket.org/tildeslash/monit/issues/254/hosts-check-is-too-long)
          * I.e. implement support for Chunked encoding (see above FIXME comment - we should have one read function, which can be used to read data and reuse it for all tests)
          */
-        if (P->url_request && P->url_request->regex)
+        if (P->url_request && P->url_request->match)
                 do_regex(socket, content_length, P->url_request);
         if (P->parameters.http.checksum)
         {
@@ -258,7 +273,7 @@ void check_http(Socket_T socket) {
                             "Accept: */*\r\n"
                             "Connection: close\r\n"
                             "%s",
-                            ((P->url_request && P->url_request->regex) || P->parameters.http.checksum) ? "GET" : "HEAD",
+                            ((P->url_request && P->url_request->match) || P->parameters.http.checksum) ? "GET" : "HEAD",
                             P->parameters.http.request ? P->parameters.http.request : "/",
                             P->parameters.http.version.major,
                             P->parameters.http.version.minor,
