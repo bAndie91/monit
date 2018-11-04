@@ -145,7 +145,8 @@ static void json_status_service(Service_T S, StringBuffer_T B, int V) {
                             "\"monitor\":%d,"
                             "\"monitormode\":%d,"
                             "\"onreboot\":%d,"
-                            "\"pendingaction\":%d",
+                            "\"pendingaction\":%d,"
+                            "\"depends_on\":[",
                             (long long)S->collected.tv_sec,
                             (long)S->collected.tv_usec,
                             S->error,
@@ -154,6 +155,17 @@ static void json_status_service(Service_T S, StringBuffer_T B, int V) {
                             S->mode,
                             S->onreboot,
                             S->doaction);
+        
+        for (Dependant_T d = S->dependantlist; d; d = d->next) {
+                if (d->dependant != NULL) {
+                        if(comma) StringBuffer_append(B, ",");
+                        StringBuffer_append(B, "\"%s\"", d->dependant);
+                        comma = true;
+                }
+        }
+        comma = false;
+        StringBuffer_append(B, "]");
+        
         if (S->every.type != Every_Cycle) {
                 StringBuffer_append(B, ",\"every\":{\"type\":%d,", S->every.type);
                 if (S->every.type == 1)
