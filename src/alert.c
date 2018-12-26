@@ -130,26 +130,8 @@ static void _substitute(Mail_T m, Event_T e) {
         const char *action = Event_get_action_description(e);
         Util_replaceString(&m->subject, "$ACTION", action);
         Util_replaceString(&m->message, "$ACTION", action);
-
-        char* groups = NULL;
-        for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
-			for (list_t m = sg->members->head; m; m = m->next) {
-				if(m->e == e->source) {
-					char* groups_new;
-					if(groups == NULL) {
-						ASPRINTFA(&groups_new, "%s", sg->name);
-					} else {
-						ASPRINTFA(&groups_new, "%s, %s", groups, sg->name);
-						free(groups);
-					}
-					groups = groups_new;
-					break;
-				}
-			}
-		}
-		if(groups == NULL) {
-			groups = "";
-		}
+        
+        char* groups = implode_servicegroups(", ", e->source);
         
         Util_replaceString(&m->subject, "$GROUPS", groups);
         Util_replaceString(&m->message, "$GROUPS", groups);
@@ -337,3 +319,30 @@ Handler_Type handle_alert(Event_T E) {
         return rv;
 }
 
+
+/**
+ * Lists the groups of a given service.
+ */
+char* implode_servicegroups(char* glue, Service_T service)
+{
+    char* groups = NULL;
+    for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
+		for (list_t m = sg->members->head; m; m = m->next) {
+			if(m->e == service) {
+				char* groups_new;
+				if(groups == NULL) {
+					ASPRINTFA(&groups_new, "%s", sg->name);
+				} else {
+					ASPRINTFA(&groups_new, "%s%s%s", groups, glue, sg->name);
+					free(groups);
+				}
+				groups = groups_new;
+				break;
+			}
+		}
+	}
+	if(groups == NULL) {
+		groups = "";
+	}
+	return groups;
+}

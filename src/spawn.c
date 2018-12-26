@@ -122,6 +122,7 @@ static void _setMonitEnvironment(Service_T S, command_t C, Event_T E, const char
         setenv("MONIT_HOST", Run.system->name, 1);
         setenv("MONIT_EVENT", E ? Event_get_description(E) : C == S->start ? "Started" : C == S->stop ? "Stopped" : "No Event", 1);
         setenv("MONIT_DESCRIPTION", E ? E->message : C == S->start ? "Started" : C == S->stop ? "Stopped" : "No Event", 1);
+        setenv("MONIT_GROUPS", implode_servicegroups(" ", S), 1);
         switch (S->type) {
                 case Service_Process:
                         putenv(Str_cat("MONIT_PROCESS_PID=%d", S->inf->priv.process.pid));

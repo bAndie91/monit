@@ -66,4 +66,6 @@
 Handler_Type handle_alert(Event_T E);
 
 
+char* implode_servicegroups(char*, Service_T);
+
 #endif
