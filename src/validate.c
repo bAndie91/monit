@@ -1353,7 +1353,11 @@ State_Type check_program(Service_T s) {
         time_t now = Time_now();
         Process_T P = s->program->P;
         if (P) {
-                if (Process_exitStatus(P) < 0) { // Program is still running
+                // Process program output
+                _programOutput(Process_getErrorStream(P), s->program->inprogressOutput);
+                _programOutput(Process_getInputStream(P), s->program->inprogressOutput);
+                // Is the program still running?
+                if (Process_exitStatus(P) < 0) {
                         int64_t execution_time = (now - s->program->started) * 1000;
                         if (execution_time > s->program->timeout) { // Program timed out
                                 rv = State_Failed;
@@ -1368,20 +1372,20 @@ State_Type check_program(Service_T s) {
                         }
                 }
                 s->program->exitStatus = Process_exitStatus(P); // Save exit status for web-view display
-                // Save program output
-                StringBuffer_clear(s->program->output);
-                _programOutput(Process_getErrorStream(P), s->program->output);
-                _programOutput(Process_getInputStream(P), s->program->output);
-                StringBuffer_trim(s->program->output);
+                StringBuffer_trim(s->program->inprogressOutput);
+                // Swap program output (instance finished)
+                StringBuffer_clear(s->program->lastOutput);
+                StringBuffer_append(s->program->lastOutput, "%s", StringBuffer_toString(s->program->inprogressOutput));
                 // Evaluate program's exit status against our status checks.
+                const char *output = StringBuffer_length(s->program->inprogressOutput) ? StringBuffer_toString(s->program->inprogressOutput) : "no output";
                 for (Status_T status = s->statuslist; status; status = status->next) {
                         if (status->operator == Operator_Changed) {
                                 if (status->initialized) {
                                         if (Util_evalQExpression(status->operator, s->program->exitStatus, status->return_value)) {
-                                                Event_post(s, Event_Status, State_Changed, status->action, "program status changed (%d -> %d) -- %s", status->return_value, s->program->exitStatus, StringBuffer_length(s->program->output) ? StringBuffer_toString(s->program->output) : "no output");
+                                                Event_post(s, Event_Status, State_Changed, status->action, "status changed (%d -> %d) -- %s", status->return_value, s->program->exitStatus, output);
                                                 status->return_value = s->program->exitStatus;
                                         } else {
-                                                Event_post(s, Event_Status, State_ChangedNot, status->action, "program status didn't change [status=%d] -- %s", s->program->exitStatus, StringBuffer_length(s->program->output) ? StringBuffer_toString(s->program->output) : "no output");
+                                                Event_post(s, Event_Status, State_ChangedNot, status->action, "status didn't change (%d) -- %s", s->program->exitStatus, output);
                                         }
                                 } else {
                                         status->initialized = true;
@@ -1390,9 +1394,9 @@ State_Type check_program(Service_T s) {
                         } else {
                                 if (Util_evalQExpression(status->operator, s->program->exitStatus, status->return_value)) {
                                         rv = State_Failed;
-                                        Event_post(s, Event_Status, State_Failed, status->action, "'%s' failed with exit status (%d) -- %s", s->path, s->program->exitStatus, StringBuffer_length(s->program->output) ? StringBuffer_toString(s->program->output) : "no output");
+                                        Event_post(s, Event_Status, State_Failed, status->action, "status failed (%d) -- %s", s->program->exitStatus, output);
                                 } else {
-                                        Event_post(s, Event_Status, State_Succeeded, status->action, "status succeeded [status=%d] -- %s", s->program->exitStatus, StringBuffer_length(s->program->output) ? StringBuffer_toString(s->program->output) : "no output");
+                                        Event_post(s, Event_Status, State_Succeeded, status->action, "status succeeded (%d) -- %s", s->program->exitStatus, output);
                                 }
                         }
                 }
@@ -1403,6 +1407,7 @@ State_Type check_program(Service_T s) {
         //FIXME: the current off-by-one-cycle based design requires that the check program will collect the exit value next cycle even if program startup should be skipped in the given cycle => must test skip here (new scheduler will obsolete this deferred skip checking)
         if (s->mode & Monitor_Forced || (! _checkSkip(s) && s->monitor != Monitor_Not)) { // The status evaluation may disable service monitoring
                 // Start program
+                StringBuffer_clear(s->program->inprogressOutput);
                 s->program->P = Command_execute(s->program->C);
                 if (! s->program->P) {
                         rv = State_Failed;

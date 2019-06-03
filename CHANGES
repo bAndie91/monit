@@ -6,6 +6,8 @@ Version 5.25.3
 
 Fixed: Buffer overrun vulnerability in URL decoding. Thanks to Zack Flack for report.
 
+Fixed: Issue #634: Check program output.
+
 
 Version 5.25.2
 
