@@ -125,10 +125,13 @@ static void _setMonitEnvironment(Service_T S, command_t C, Event_T E, const char
         setenv("MONIT_GROUPS", implode_servicegroups(" ", S), 1);
         switch (S->type) {
                 case Service_Process:
-                        putenv(Str_cat("MONIT_PROCESS_PID=%d", S->inf->priv.process.pid));
+                        if (S->inf->priv.process.pid > -1)
+                                putenv(Str_cat("MONIT_PROCESS_PID=%d", S->inf->priv.process.pid));
+                        if (S->inf->priv.process.children > -1)
+                                putenv(Str_cat("MONIT_PROCESS_CHILDREN=%d", S->inf->priv.process.children));
+                        if (S->inf->priv.process.cpu_percent > -1)
+                                putenv(Str_cat("MONIT_PROCESS_CPU_PERCENT=%.1f", S->inf->priv.process.cpu_percent));
                         putenv(Str_cat("MONIT_PROCESS_MEMORY=%llu", (unsigned long long)((double)S->inf->priv.process.mem / 1024.)));
-                        putenv(Str_cat("MONIT_PROCESS_CHILDREN=%d", S->inf->priv.process.children));
-                        putenv(Str_cat("MONIT_PROCESS_CPU_PERCENT=%.1f", S->inf->priv.process.cpu_percent));
                         break;
                 case Service_Program:
                         putenv(Str_cat("MONIT_PROGRAM_STATUS=%d", S->program->exitStatus));

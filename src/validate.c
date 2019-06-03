@@ -1113,14 +1113,31 @@ State_Type check_process(Service_T s) {
         ASSERT(s);
         ASSERT(s->inf);
         State_Type rv = State_Succeeded;
+        boolean_t checkResources = false;
         pid_t pid = ProcessTree_findProcess(s);
         if (! pid) {
-                for (Nonexist_T l = s->nonexistlist; l; l = l->next)
-                        Event_post(s, Event_Nonexist, State_Failed, l->action, "process is not running");
-                return State_Failed;
-        } else {
-                for (Nonexist_T l = s->nonexistlist; l; l = l->next)
-                        Event_post(s, Event_Nonexist, State_Succeeded, l->action, "process is running with pid %d", (int)pid);
+                for (NonExist_T l = s->nonexistlist; l; l = l->next) {
+                        rv = State_Failed;
+                        Event_post(s, Event_NonExist, State_Failed, l->action, "process is not running");
+                }
+                for (Exist_T l = s->existlist; l; l = l->next) {
+                        Event_post(s, Event_Exist, State_Succeeded, l->action, "process is not running");
+                }
+                return rv;
+        }
+        if (Run.flags & Run_ProcessEngineEnabled) {
+                // Update statistics (event can execute a program and set environment like MONIT_PROCESS_PID)
+                if (! (checkResources = ProcessTree_updateProcess(s, pid))) {
+                        LogError("'%s' failed to get process data\n", s->name);
+                        rv = State_Failed;
+                }
+        }
+        for (NonExist_T l = s->nonexistlist; l; l = l->next) {
+                Event_post(s, Event_NonExist, State_Succeeded, l->action, "process is running with pid %d", (int)pid);
+        }
+        for (Exist_T l = s->existlist; l; l = l->next) {
+                rv = State_Failed;
+                Event_post(s, Event_Exist, State_Failed, l->action, "process is running with pid %d", (int)pid);
         }
         /* Reset the exec and timeout errors if active ... the process is running (most probably after manual intervention) */
         if (IS_EVENT_SET(s->error, Event_Exec))
@@ -1128,29 +1145,26 @@ State_Type check_process(Service_T s) {
         if (IS_EVENT_SET(s->error, Event_Timeout))
                 for (ActionRate_T ar = s->actionratelist; ar; ar = ar->next)
                         Event_post(s, Event_Timeout, State_Succeeded, ar->action, "process is running after previous restart timeout (manually recovered?)");
-        if (Run.flags & Run_ProcessEngineEnabled) {
-                if (ProcessTree_updateProcess(s, pid)) {
-                        if (_checkProcessState(s) == State_Failed)
-                                rv = State_Failed;
-                        if (_checkProcessPid(s) == State_Failed)
-                                rv = State_Failed;
-                        if (_checkProcessPpid(s) == State_Failed)
-                                rv = State_Failed;
-                        if (_checkUid(s, s->inf->priv.process.uid) == State_Failed)
-                                rv = State_Failed;
-                        if (_checkEuid(s, s->inf->priv.process.euid) == State_Failed)
-                                rv = State_Failed;
-                        if (_checkGid(s, s->inf->priv.process.gid) == State_Failed)
-                                rv = State_Failed;
-                        if (_checkUptime(s, s->inf->priv.process.uptime) == State_Failed)
-                                rv = State_Failed;
-                        for (Resource_T pr = s->resourcelist; pr; pr = pr->next)
-                                if (_checkProcessResources(s, pr) == State_Failed)
-                                        rv = State_Failed;
-                } else {
-                        LogError("'%s' failed to get service data\n", s->name);
+        if (checkResources) {
+                if (_checkProcessState(s) == State_Failed)
                         rv = State_Failed;
-                }
+                if (_checkProcessPid(s) == State_Failed)
+                        rv = State_Failed;
+                if (_checkProcessPpid(s) == State_Failed)
+                        rv = State_Failed;
+                if (_checkUid(s, s->inf.process->uid) == State_Failed)
+                        rv = State_Failed;
+                if (_checkEuid(s, s->inf.process->euid) == State_Failed)
+                        rv = State_Failed;
+                if (_checkGid(s, s->inf.process->gid) == State_Failed)
+                        rv = State_Failed;
+                if (_checkUptime(s, s->inf.process->uptime) == State_Failed)
+                        rv = State_Failed;
+                if (_checkSecurityAttribute(s, s->inf.process->secattr) == State_Failed)
+                        rv = State_Failed;
+                for (Resource_T pr = s->resourcelist; pr; pr = pr->next)
+                        if (_checkProcessResources(s, pr) == State_Failed)
+                                rv = State_Failed;
         }
         int64_t uptimeMilli = (int64_t)(s->inf.process->uptime) * 1000LL;
         for (Port_T pp = s->portlist; pp; pp = pp->next) {

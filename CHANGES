@@ -11,6 +11,9 @@ Fixed: Issue #634: Check program output.
 Fixed: Issue #759: The "stop" action for "check program" has no effect if the "every" statement
 is used to skip monitoring in some cycles.
 
+Fixed: Issue #790: check process: The exec action's environment contains invalid value for
+MONIT_PROCESS_* variables.
+
 
 Version 5.25.2
 
