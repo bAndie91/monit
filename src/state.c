@@ -462,6 +462,30 @@ void State_close() {
         }
 }
 
+void State_save_write_event_action(Action_T a) {
+	fprintf(file2, "\taction id=%u count=%u cycles=%u repeat=%u exec=%u\n",
+		a->id,
+		a->count,
+		a->cycles,
+		a->repeat,
+		a->exec ? true : false
+	);
+	if(a->exec)
+	{
+		fprintf(file2, "\t\thas_uid=%u has_gid=%u uid=%u gid=%u timeout=%u args=%u\n",
+			a->exec->has_uid,
+			a->exec->has_gid,
+			a->exec->uid,
+			a->exec->gid,
+			a->exec->timeout,
+			a->exec->length
+		);
+		for(int i = 0; i < a->exec->length; i++)
+			// FIXME: CR/LF char in arg[i]
+			fprintf(file2, "\t\t\t%s\n", a->exec->arg[i]);
+	}
+}
+
 void State_save() {
         TRY
         {
@@ -551,6 +575,8 @@ void State_save() {
                         		event->state_map,
                         		event->count
                         	);
+                        	State_save_write_event_action(event->action->failed);
+                        	State_save_write_event_action(event->action->succeeded);
                         }
                 }
                 if (fflush(file2))
