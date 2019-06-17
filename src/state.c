@@ -319,12 +319,13 @@ static void _restoreV3() {
         while(!feof(file2))
         {
         	fgets(service_name, sizeof(service_name), file2);  // TODO error handing
+        	if(service_name[0] != '\0' && service_name[strlen(service_name)-1] == '\n') service_name[strlen(service_name)-1] = '\0';
         	Service_T service = Util_getService(service_name);
         	NEW(e);
         	while(fscanf(file2, "\tid=%lu collected=%lu.%lu mode=%u state=%u state_changed=%u state_map=%llu count=%u\n", 
-        		&(e->id), &(e->collected.tv_sec), &(e->collected.tv_usec), &(e->mode), &(e->state), &(e->state_changed), &(e->state_map), &(e->count)))
+        		&(e->id), &(e->collected.tv_sec), &(e->collected.tv_usec), &(e->mode), &(e->state), &(e->state_changed), &(e->state_map), &(e->count)) == 8)
         	{
-        		DEBUG("restore event id %u on service %s\n", e->id, service_name);
+        		fprintf(stderr, "restore event id %u on service %s\n", e->id, service_name);
         		if(service)
         		{
         			service->eventlist->next = service->eventlist;
