@@ -1137,6 +1137,7 @@ struct myrun {
                 char *pid;                              /**< This programs pidfile */
                 char *id;                       /**< The file with unique monit id */
                 char *state;            /**< The file with the saved runtime state */
+                char *eventstate;      /**< The file with the saved runtime events */
         } files;
         char *mygroup;                              /**< Group Name of the Service */
         MD_T id;                                              /**< Unique monit id */

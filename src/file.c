@@ -104,6 +104,9 @@ void file_init() {
                 snprintf(buf, STRLEN, "%s/.%s", Run.Env.home, MYSTATEFILE);
                 Run.files.state = Str_dup(buf);
         }
+        if (Run.files.eventstate == NULL) {
+        	asprintf(&Run.files.eventstate, "%s-events", Run.files.state);
+        }
 }
 
 
