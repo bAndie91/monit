@@ -328,8 +328,15 @@ static void _restoreV3() {
         		fprintf(stderr, "restore event id %u on service %s\n", e->id, service_name);
         		if(service)
         		{
-        			service->eventlist->next = service->eventlist;
-        			service->eventlist = e;
+        			e->source = service;
+        			e->type = service->type;
+        			Event_T prevevent;
+        			if(service->eventlist) {
+	        			for(prevevent = service->eventlist; prevevent->next; prevevent = prevevent->next);
+    	    			prevevent->next = e;
+    	    		} else {
+    	    			service->eventlist = e;
+    	    		}
         		}
         		NEW(e);
         	}
