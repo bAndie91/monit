@@ -311,6 +311,27 @@ static void _restoreV3() {
                         }
                 }
         }
+        
+        if (lseek(fileno(file2), 0L, SEEK_SET) == -1)
+                THROW(IOException, "Unable to seek eventstate file");
+        char service_name[STRLEN];
+        Event_T e;
+        while(!feof(file2))
+        {
+        	fgets(service_name, sizeof(service_name), file2);  // TODO error handing
+        	Service_T service = Util_getService(service_name);
+        	NEW(e);
+        	while(fscanf(file2, "\tid=%lu collected=%lu.%lu mode=%u state=%u state_changed=%u state_map=%llu count=%u\n", 
+        		&(e->id), &(e->collected.tv_sec), &(e->collected.tv_usec), &(e->mode), &(e->state), &(e->state_changed), &(e->state_map), &(e->count)))
+        	{
+        		if(service)
+        		{
+        			service->eventlist->next = service->eventlist;
+        			service->eventlist = e;
+        		}
+        		NEW(e);
+        	}
+        }
 }
 
 
