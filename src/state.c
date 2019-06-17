@@ -183,6 +183,7 @@ typedef struct mystate0 {
 
 
 static int file = -1;
+static FILE* file2 = NULL;
 static uint64_t booted = 0ULL;
 
 
@@ -402,6 +403,15 @@ boolean_t State_open() {
                 LogError("State file '%s': cannot open for write -- %s\n", Run.files.state, STRERROR);
                 return false;
         }
+        int file2fd;
+        if ((file2fd = open(Run.files.eventstate, O_RDWR | O_CREAT, 0600)) == -1) {
+                LogError("Event state file '%s': cannot open for write -- %s\n", Run.files.eventstate, STRERROR);
+                return false;
+        }
+        if((file2 = fdopen(file2fd, "w+")) == NULL) {
+                LogError("Event state file '%s' descriptor: cannot open -- %s\n", Run.files.eventstate, STRERROR);
+                return false;
+        }
         atexit(State_close);
         return true;
 }
@@ -414,8 +424,13 @@ void State_close() {
                 else
                         file = -1;
         }
+        if (file2 != NULL) {
+                if (fclose(file2) != 0)
+                        LogError("Event state file '%s': close error -- %s\n", Run.files.eventstate, STRERROR);
+                else
+                        file2 = NULL;
+        }
 }
-
 
 void State_save() {
         TRY
@@ -486,6 +501,30 @@ void State_save() {
                 }
                 if (fsync(file))
                         THROW(IOException, "Unable to sync -- %s", STRERROR);
+                
+                if (ftruncate(fileno(file2), 0L) == -1)
+                        THROW(IOException, "Unable to truncate eventstate file");
+                if (lseek(fileno(file2), 0L, SEEK_SET) == -1)
+                        THROW(IOException, "Unable to seek eventstate file");
+                for (Service_T service = servicelist; service; service = service->next) {
+                        // TODO: write error handling
+                        fprintf(file2, "%s\n", service->name);
+                        for(Event_T event = service->eventlist; event; event = event->next)
+                        {
+                        	fprintf(file2, "\tid=%lu collected=%lu.%lu mode=%u state=%u state_changed=%u state_map=%llu count=%u\n",
+                        		event->id, 
+                        		event->collected.tv_sec, 
+                        		event->collected.tv_usec,
+                        		event->mode,
+                        		event->state,
+                        		event->state_changed ? true : false,
+                        		event->state_map,
+                        		event->count
+                        	);
+                        }
+                }
+                if (fsync(fileno(file2)))
+                        THROW(IOException, "Unable to sync eventstate file -- %s", STRERROR);
         }
         ELSE
         {
