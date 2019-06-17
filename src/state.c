@@ -312,7 +312,7 @@ static void _restoreV3() {
                 }
         }
         
-        if (lseek(fileno(file2), 0L, SEEK_SET) == -1)
+        if (fseek(file2, 0L, SEEK_SET) == -1)
                 THROW(IOException, "Unable to seek eventstate file");
         char service_name[STRLEN];
         Event_T e;
@@ -324,6 +324,7 @@ static void _restoreV3() {
         	while(fscanf(file2, "\tid=%lu collected=%lu.%lu mode=%u state=%u state_changed=%u state_map=%llu count=%u\n", 
         		&(e->id), &(e->collected.tv_sec), &(e->collected.tv_usec), &(e->mode), &(e->state), &(e->state_changed), &(e->state_map), &(e->count)))
         	{
+        		DEBUG("restore event id %u on service %s\n", e->id, service_name);
         		if(service)
         		{
         			service->eventlist->next = service->eventlist;
@@ -525,7 +526,7 @@ void State_save() {
                 
                 if (ftruncate(fileno(file2), 0L) == -1)
                         THROW(IOException, "Unable to truncate eventstate file");
-                if (lseek(fileno(file2), 0L, SEEK_SET) == -1)
+                if (fseek(file2, 0L, SEEK_SET) == -1)
                         THROW(IOException, "Unable to seek eventstate file");
                 for (Service_T service = servicelist; service; service = service->next) {
                         // TODO: write error handling
@@ -544,8 +545,8 @@ void State_save() {
                         	);
                         }
                 }
-                if (fsync(fileno(file2)))
-                        THROW(IOException, "Unable to sync eventstate file -- %s", STRERROR);
+                if (fflush(file2))
+                        THROW(IOException, "Unable to flush eventstate file -- %s", STRERROR);
         }
         ELSE
         {
