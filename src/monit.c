@@ -385,7 +385,7 @@ static void do_reinit() {
                 monit_http(Httpd_Start);
 
         /* send the monit startup notification */
-        Event_post(Run.system, Event_Instance, State_Changed, Run.system->action_MONIT_START, "Monit reloaded");
+        Event_post(Run.system, Event_Instance, (Service_EventAction_UniqId_T){Service_EventAction_UniqId_Start, 0LL}, State_Changed, Run.system->action_MONIT_START, "Monit reloaded");
 
         if (Run.mmonits) {
                 Thread_create(heartbeatThread, heartbeat, NULL);
@@ -500,7 +500,7 @@ static void do_exit() {
                 LogInfo("Monit daemon with pid [%d] stopped\n", (int)getpid());
 
                 /* send the monit stop notification */
-                Event_post(Run.system, Event_Instance, State_Changed, Run.system->action_MONIT_STOP, "Monit %s stopped", VERSION);
+                Event_post(Run.system, Event_Instance, (Service_EventAction_UniqId_T){Service_EventAction_UniqId_Stop, 0LL}, State_Changed, Run.system->action_MONIT_STOP, "Monit %s stopped", VERSION);
         }
         gc();
 #ifdef HAVE_OPENSSL
@@ -564,7 +564,7 @@ static void do_default() {
                 }
 
                 /* send the monit startup notification */
-                Event_post(Run.system, Event_Instance, State_Changed, Run.system->action_MONIT_START, "Monit %s started", VERSION);
+                Event_post(Run.system, Event_Instance, (Service_EventAction_UniqId_T){Service_EventAction_UniqId_Start, 0LL}, State_Changed, Run.system->action_MONIT_START, "Monit %s started", VERSION);
 
                 if (Run.mmonits) {
                         Thread_create(heartbeatThread, heartbeat, NULL);

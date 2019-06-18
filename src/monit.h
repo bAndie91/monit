@@ -252,6 +252,13 @@ typedef enum {
 
 
 typedef enum {
+	Service_EventAction_UniqId_Start = 1,
+	Service_EventAction_UniqId_Stop = 2,
+	Service_EventAction_UniqId_Exec = 3,
+} __attribute__((__packed__)) Service_EventAction_UniqId_Type;
+
+
+typedef enum {
         Monitor_Active = 0x0,
         Monitor_Passive = 0x1,
         Monitor_Forced = 0x2
@@ -461,6 +468,12 @@ typedef struct myeventaction {
         Action_T  failed;                  /**< Action in the case of failure down */
         Action_T  succeeded;                    /**< Action in the case of failure up */
 } *EventAction_T;
+
+
+typedef struct myserviceeventactionuniqid {
+        Service_EventAction_UniqId_Type id;
+        unsigned long long hash;
+} Service_EventAction_UniqId_T;
 
 
 /** Defines an url object */

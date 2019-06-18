@@ -380,6 +380,8 @@ void Event_post_postrun(Service_T service, Event_T e, State_Type state)
 }
 
 boolean_t Event_identical_actions(Action_T a1, Action_T a2) {
+// TODO: compare Service_EventAction_UniqId
+// TODO: compare eventaction deeply only if action->hash is 0
 	if(!a1 || !a2) return false;
 	if(a1->id != a2->id) return false;
 	/* don't requisite count, cycles, and repeat fields to match */
@@ -414,12 +416,14 @@ boolean_t Event_identical_event_actions(EventAction_T ea1, EventAction_T ea2) {
  * @param action Description of the event action
  * @param s Optional message describing the event
  */
-void Event_post(Service_T service, long id, State_Type state, EventAction_T action, char *s, ...) {
+void Event_post(Service_T service, long id, Service_EventAction_UniqId_T service_eventaction_uniqid, State_Type state, EventAction_T action, char *s, ...) {
         ASSERT(service);
         ASSERT(action);
         ASSERT(s);
         ASSERT(state == State_Failed || state == State_Succeeded || state == State_Changed || state == State_ChangedNot);
 
+        // TODO: save service_eventaction_uniqid into action
+        
         va_list ap;
         va_start(ap, s);
         char *message = Str_vcat(s, ap);
