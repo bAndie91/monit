@@ -252,9 +252,30 @@ typedef enum {
 
 
 typedef enum {
-	Service_EventAction_UniqId_Start = 1,
-	Service_EventAction_UniqId_Stop = 2,
-	Service_EventAction_UniqId_Exec = 3,
+	Service_EventAction_UniqId_Emtpy = 0,
+	Service_EventAction_UniqId_Action,
+	Service_EventAction_UniqId_ActionRate,
+	Service_EventAction_UniqId_Bandwidth,
+	Service_EventAction_UniqId_Checksum,
+	Service_EventAction_UniqId_Empty,
+	Service_EventAction_UniqId_Emtpy,
+	Service_EventAction_UniqId_Euid,
+	Service_EventAction_UniqId_Exec,
+	Service_EventAction_UniqId_Fsflag,
+	Service_EventAction_UniqId_FsResource,
+	Service_EventAction_UniqId_Icmp,
+	Service_EventAction_UniqId_Link,
+	Service_EventAction_UniqId_LinkSaturation,
+	Service_EventAction_UniqId_Match,
+	Service_EventAction_UniqId_Port,
+	Service_EventAction_UniqId_Resource,
+	Service_EventAction_UniqId_Size,
+	Service_EventAction_UniqId_Start,
+	Service_EventAction_UniqId_Status,
+	Service_EventAction_UniqId_Stop,
+	Service_EventAction_UniqId_Timestamp,
+	Service_EventAction_UniqId_Type,
+	Service_EventAction_UniqId_Uptime,
 } __attribute__((__packed__)) Service_EventAction_UniqId_Type;
 
 
@@ -467,6 +488,11 @@ typedef struct myaction {
 typedef struct myeventaction {
         Action_T  failed;                  /**< Action in the case of failure down */
         Action_T  succeeded;                    /**< Action in the case of failure up */
+        struct {
+        	Service_EventAction_UniqId_Type id;
+        	Every_Type event_type_mask;
+        	unsigned long long hash;
+        } uniqid;
 } *EventAction_T;
 
 

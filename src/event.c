@@ -380,8 +380,6 @@ void Event_post_postrun(Service_T service, Event_T e, State_Type state)
 }
 
 boolean_t Event_identical_actions(Action_T a1, Action_T a2) {
-// TODO: compare Service_EventAction_UniqId
-// TODO: compare eventaction deeply only if action->hash is 0
 	if(!a1 || !a2) return false;
 	if(a1->id != a2->id) return false;
 	/* don't requisite count, cycles, and repeat fields to match */
@@ -402,9 +400,24 @@ boolean_t Event_identical_actions(Action_T a1, Action_T a2) {
 	return true;
 }
 
+boolean_t Event_identical_action_uniqids(EventAction_T ea1, EventAction_T ea2) {
+	Service_EventAction_UniqId_T seauid1, seauid2;
+	seauid1 = ea1->uniqid;
+	seauid2 = ea2->uniqid;
+	if(seauid1->id != seauid2->id) return false;
+	if(seauid1->id == Service_EventAction_UniqId_Empty) {
+		if(seauid1->event_type_mask != seauid2->event_type_mask) return false;
+	}
+	if(seauid1->hash != seauid2->hash) return false;
+	// TODO idea: compare eventaction deeply only if action->hash is 0
+	//if(Event_identical_actions(ea1->failed, ea2->failed) && Event_identical_actions(ea1->succeeded, ea2->succeeded)) return true;
+	return true;
+}
+
 boolean_t Event_identical_event_actions(EventAction_T ea1, EventAction_T ea2) {
 	if(!ea1 || !ea2) return false;
-	if(Event_identical_actions(ea1->failed, ea2->failed) && Event_identical_actions(ea1->succeeded, ea2->succeeded)) return true;
+	if(ea1 == ea2) return true;
+	if(Event_identical_action_uniqids(ea1, ea2)) return true;
 	return false;
 }
 
@@ -421,8 +434,15 @@ void Event_post(Service_T service, long id, Service_EventAction_UniqId_T service
         ASSERT(action);
         ASSERT(s);
         ASSERT(state == State_Failed || state == State_Succeeded || state == State_Changed || state == State_ChangedNot);
-
-        // TODO: save service_eventaction_uniqid into action
+        
+        {
+        	Service_EventAction_UniqId_T seauid;
+        	seauid = action->uniqid;
+        	if(!seauid) { NEW(seauid); action->uniqid = seauid; }
+        	seauid->id = service_eventaction_uniqid->id;
+        	seauid->event_type_mask = id;
+        	seauid->hash = service_eventaction_uniqid->hash;
+        }
         
         va_list ap;
         va_start(ap, s);
