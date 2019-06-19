@@ -2005,3 +2005,75 @@ const char *Util_timestr(int time) {
         return NULL;
 }
 
+
+unsigned long long Util_Hash_Format(const char *formats, ...) {
+	md5_context_t ctx;
+	char *fmt;
+	char ffmt[5];
+	va_list varg;
+	char buf[STRLEN];
+	unsigned char digest[16];
+	unsigned long long result = 0LL;
+	
+	md5_init(&ctx);
+	fmt = formats;
+	va_start(varg, formats);
+	if(*fmt == 'q') sprintf(ffmt, "%%ull");
+	else sprintf(ffmt, "%%%c", *fmt);
+	buf[0] = ',';
+	snprintf(buf+1, STRLEN - 2, ffmt, varg);
+	md5_append(&ctx, (const md5_byte_t *)buf, strlen(buf));
+	va_end(varg);
+	md5_finish(&ctx, (md5_byte_t *)digest);
+	
+	for(int i = 0; i < 8; i++) {
+		result << 8;
+		result |= digest[i];
+	}
+	return result;
+}
+unsigned long long Util_EventAction_Hash_ActionRate(ActionRate_T obj) {
+	unsigned long long hash;
+	hash = obj->count << (sizeof(obj->count)*8) | obj->cycle;
+	return hash;
+}
+unsigned long long Util_EventAction_Hash_Bandwidth(Bandwidth_T obj) {
+	unsigned long long hash;
+	return Util_Hash_Format("uudq", obj->operator, obj->range, obj->rangecount, obj->limit);
+}
+unsigned long long Util_EventAction_Hash_Checksum(Checksum_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Fsflag(Fsflag_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_FsResource(Filesystem_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Icmp(Icmp_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_LinkSaturation(LinkSaturation_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Match(Match_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Port(Port_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Resource(Resource_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Size(Size_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Status(Status_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Timestamp(Timestamp_T obj) {
+	unsigned long long hash;
+}
+unsigned long long Util_EventAction_Hash_Uptime(Uptime_T obj) {
+	unsigned long long hash;
+}

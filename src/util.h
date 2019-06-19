@@ -413,5 +413,20 @@ int Util_statGlob(const char *, struct stat *);
 
 #define ASPRINTFA(...) do{ if(asprintf(__VA_ARGS__)==-1){abort();} }while(0)
 
+unsigned long long Util_EventAction_Hash_ActionRate(ActionRate_T);
+unsigned long long Util_EventAction_Hash_Bandwidth(Bandwidth_T);
+unsigned long long Util_EventAction_Hash_Checksum(Checksum_T);
+unsigned long long Util_EventAction_Hash_Fsflag(Fsflag_T);
+unsigned long long Util_EventAction_Hash_FsResource(Filesystem_T);
+unsigned long long Util_EventAction_Hash_Icmp(Icmp_T);
+unsigned long long Util_EventAction_Hash_LinkSaturation(LinkSaturation_T);
+unsigned long long Util_EventAction_Hash_Match(Match_T);
+unsigned long long Util_EventAction_Hash_Port(Port_T);
+unsigned long long Util_EventAction_Hash_Resource(Resource_T);
+unsigned long long Util_EventAction_Hash_Size(Size_T);
+unsigned long long Util_EventAction_Hash_Status(Status_T);
+unsigned long long Util_EventAction_Hash_Timestamp(Timestamp_T);
+unsigned long long Util_EventAction_Hash_Uptime(Uptime_T);
+
 #endif
 
