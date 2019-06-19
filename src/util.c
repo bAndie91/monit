@@ -2006,24 +2006,58 @@ const char *Util_timestr(int time) {
 }
 
 
-unsigned long long Util_Hash_Format(const char *formats, ...) {
+typedef enum {
+	Util_Hash_Format_Type_d = 1,
+	Util_Hash_Format_Type_f,
+	Util_Hash_Format_Type_lld,
+	Util_Hash_Format_Type_llu,
+	Util_Hash_Format_Type_md5,
+	Util_Hash_Format_Type_s,
+	Util_Hash_Format_Type_u,
+	Util_Hash_Format_Type_ull,
+} __attribute__((__packed__)) Util_Hash_Format_Type;
+
+unsigned long long Util_Hash_Format(short elements, ...) {
 	md5_context_t ctx;
-	char *fmt;
-	char ffmt[5];
-	va_list varg;
+	va_list vap;
+	Util_Hash_Format_Type fmtt;
 	char buf[STRLEN];
 	unsigned char digest[16];
 	unsigned long long result = 0LL;
 	
 	md5_init(&ctx);
 	fmt = formats;
-	va_start(varg, formats);
-	if(*fmt == 'q') sprintf(ffmt, "%%ull");
-	else sprintf(ffmt, "%%%c", *fmt);
-	buf[0] = ',';
-	snprintf(buf+1, STRLEN - 2, ffmt, varg);
-	md5_append(&ctx, (const md5_byte_t *)buf, strlen(buf));
-	va_end(varg);
+	va_start(vap, elements);
+	for(; elements>0; elements--)
+	{
+		buf[0] = ',';
+		fmtt = va_arg(vap, Util_Hash_Format_Type);
+		switch(fmtt) {
+			case Util_Hash_Format_Type_f:
+				snprintf(buf+1, STRLEN - 2, "%f", va_arg(vap, double));
+				break;
+			case Util_Hash_Format_Type_lld:
+				snprintf(buf+1, STRLEN - 2, "%lld", va_arg(vap, long long));
+				break;
+			case Util_Hash_Format_Type_llu:
+				snprintf(buf+1, STRLEN - 2, "%llu", va_arg(vap, unsigned long long));
+				break;
+			case Util_Hash_Format_Type_md5:
+				snprintf(buf+1, STRLEN - 2, "%."MD_SIZE"s", va_arg(vap, char*));
+				break;
+			case Util_Hash_Format_Type_s:
+				snprintf(buf+1, STRLEN - 2, "%s", va_arg(vap, char*));
+				break;
+			case Util_Hash_Format_Type_d:
+				snprintf(buf+1, STRLEN - 2, "%d", va_arg(vap, int));
+				break;
+			case Util_Hash_Format_Type_u:
+				snprintf(buf+1, STRLEN - 2, "%u", va_arg(vap, unsigned int));
+				break;
+		}
+		md5_append(&ctx, (const md5_byte_t *)buf, strlen(buf));
+	}
+	va_end(vap);
 	md5_finish(&ctx, (md5_byte_t *)digest);
 	
 	for(int i = 0; i < 8; i++) {
@@ -2032,48 +2066,42 @@ unsigned long long Util_Hash_Format(const char *formats, ...) {
 	}
 	return result;
 }
-unsigned long long Util_EventAction_Hash_ActionRate(ActionRate_T obj) {
-	unsigned long long hash;
-	hash = obj->count << (sizeof(obj->count)*8) | obj->cycle;
-	return hash;
+unsigned long long Util_EventAction_Hash_ActionRate(ActionRate_T o) {
+	return Util_Hash_Format(2, Util_Hash_Format_Type_d, o->count, Util_Hash_Format_Type_d, o->cycle);
 }
-unsigned long long Util_EventAction_Hash_Bandwidth(Bandwidth_T obj) {
-	unsigned long long hash;
-	return Util_Hash_Format("uudq", obj->operator, obj->range, obj->rangecount, obj->limit);
+unsigned long long Util_EventAction_Hash_Bandwidth(Bandwidth_T o) {
+	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_u, o->range, Util_Hash_Format_Type_d, o->rangecount, Util_Hash_Format_Type_llu, o->limit);
 }
-unsigned long long Util_EventAction_Hash_Checksum(Checksum_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Checksum(Checksum_T o) {
+	return Util_Hash_Format(3, Util_Hash_Format_Type_d, o->test_changes, Util_Hash_Format_Type_u, o->type, Util_Hash_Format_Type_md5, o->hash);
 }
-unsigned long long Util_EventAction_Hash_Fsflag(Fsflag_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_FsResource(Filesystem_T o) {
+	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->resource, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_lld, o->limit_absolute, Util_Hash_Format_Type_f, o->limit_percent);
 }
-unsigned long long Util_EventAction_Hash_FsResource(Filesystem_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Icmp(Icmp_T o) {
+	return Util_Hash_Format(8, Util_Hash_Format_Type_d, o->type, Util_Hash_Format_Type_d, o->size, Util_Hash_Format_Type_d, o->count, Util_Hash_Format_Type_d, o->timeout, Util_Hash_Format_Type_u, o->is_available, Util_Hash_Format_Type_u, o->family, Util_Hash_Format_Type_f, o->response, Util_Hash_Format_Type_s, o->outgoing->ip);
 }
-unsigned long long Util_EventAction_Hash_Icmp(Icmp_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_LinkSaturation(LinkSaturation_T o) {
+	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_f, o->limit);
 }
-unsigned long long Util_EventAction_Hash_LinkSaturation(LinkSaturation_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Match(Match_T o) {
+	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->ignore, Util_Hash_Format_Type_u, o->not, Util_Hash_Format_Type_s, o->match_string, Util_Hash_Format_Type_s, o->match_path);
 }
-unsigned long long Util_EventAction_Hash_Match(Match_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Port(Port_T o) {
+	return Util_Hash_Format();
 }
-unsigned long long Util_EventAction_Hash_Port(Port_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Resource(Resource_T o) {
+	return Util_Hash_Format(3, Util_Hash_Format_Type_u, o->resource_id, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_f, o->limit);
 }
-unsigned long long Util_EventAction_Hash_Resource(Resource_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Size(Size_T o) {
+	return Util_Hash_Format(4, Util_Hash_Format_Type_d, o->test_changes, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_llu, o->size);
 }
-unsigned long long Util_EventAction_Hash_Size(Size_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Status(Status_T o) {
+	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_d, o->return_value);
 }
-unsigned long long Util_EventAction_Hash_Status(Status_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Timestamp(Timestamp_T o) {
+	return Util_Hash_Format(3, Util_Hash_Format_Type_d, o->test_changes, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_d, o->time);
 }
-unsigned long long Util_EventAction_Hash_Timestamp(Timestamp_T obj) {
-	unsigned long long hash;
-}
-unsigned long long Util_EventAction_Hash_Uptime(Uptime_T obj) {
-	unsigned long long hash;
+unsigned long long Util_EventAction_Hash_Uptime(Uptime_T o) {
+	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_ull, o->uptime);
 }

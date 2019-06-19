@@ -876,11 +876,11 @@ static State_Type _checkFilesystemFlags(Service_T s) {
         if (s->inf->priv.filesystem._flags >= 0) {
                 if (s->inf->priv.filesystem._flags != s->inf->priv.filesystem.flags) {
                         for (Fsflag_T l = s->fsflaglist; l; l = l->next)
-                                Event_post(s, Event_Fsflag, (Service_EventAction_UniqId_T){Service_EventAction_UniqId_Fsflag, Util_EventAction_Hash_Fsflag(l)}, State_Changed, l->action, "filesystem flags changed to %#x", s->inf->priv.filesystem.flags);
+                                Event_post(s, Event_Fsflag, seauid_empty, State_Changed, l->action, "filesystem flags changed to %#x", s->inf->priv.filesystem.flags);
                         return State_Changed;
                 }
                 for (Fsflag_T l = s->fsflaglist; l; l = l->next)
-                        Event_post(s, Event_Fsflag, (Service_EventAction_UniqId_T){Service_EventAction_UniqId_Fsflag, Util_EventAction_Hash_Fsflag(l)}, State_ChangedNot, l->action, "filesystem flags has not changed");
+                        Event_post(s, Event_Fsflag, seauid_empty, State_ChangedNot, l->action, "filesystem flags has not changed");
                 return State_ChangedNot;
         }
         return State_Init;
