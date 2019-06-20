@@ -252,13 +252,11 @@ typedef enum {
 
 
 typedef enum {
-	Service_EventAction_UniqId_Emtpy = 0,
+	Service_EventAction_UniqId_Empty = 0,
 	Service_EventAction_UniqId_Action,
 	Service_EventAction_UniqId_ActionRate,
 	Service_EventAction_UniqId_Bandwidth,
 	Service_EventAction_UniqId_Checksum,
-	Service_EventAction_UniqId_Empty,
-	Service_EventAction_UniqId_Emtpy,
 	Service_EventAction_UniqId_Euid,
 	Service_EventAction_UniqId_Exec,
 	Service_EventAction_UniqId_Fsflag,
@@ -274,8 +272,7 @@ typedef enum {
 	Service_EventAction_UniqId_Status,
 	Service_EventAction_UniqId_Stop,
 	Service_EventAction_UniqId_Timestamp,
-	Service_EventAction_UniqId_Type,
-	Service_EventAction_UniqId_Uptime,
+	Service_EventAction_UniqId_Uptime
 } __attribute__((__packed__)) Service_EventAction_UniqId_Type;
 
 
@@ -499,7 +496,7 @@ typedef struct myeventaction {
 typedef struct myserviceeventactionuniqid {
         Service_EventAction_UniqId_Type id;
         unsigned long long hash;
-} Service_EventAction_UniqId_T;
+} Service_EventAction_UniqId_T;  /* used as Event_post() argument */
 
 
 /** Defines an url object */
