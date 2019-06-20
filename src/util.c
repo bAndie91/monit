@@ -2060,35 +2060,44 @@ unsigned long long Util_Hash_Format(short elements, ...) {
 	md5_context_t ctx;
 	va_list vap;
 	Util_Hash_Format_Type fmtt;
+	double f;
+	long long lld;
+	unsigned long long llu;
+	char* s;
+	int d;
+	unsigned int u;
 	unsigned char digest[16];
 	
 	md5_init(&ctx);
-	fmt = formats;
 	va_start(vap, elements);
 	for(; elements>0; elements--)
 	{
 		fmtt = va_arg(vap, Util_Hash_Format_Type);
 		switch(fmtt) {
 			case Util_Hash_Format_Type_f:
-				md5_append_comma_multi_type(&ctx, fmtt, &va_arg(vap, double));
+				f = va_arg(vap, double);
+				md5_append_comma_multi_type(&ctx, fmtt, &f);
 				break;
 			case Util_Hash_Format_Type_lld:
-				md5_append_comma_multi_type(&ctx, fmtt, &va_arg(vap, long long));
+				lld = va_arg(vap, long long);
+				md5_append_comma_multi_type(&ctx, fmtt, &lld);
 				break;
 			case Util_Hash_Format_Type_llu:
-				md5_append_comma_multi_type(&ctx, fmtt, &va_arg(vap, unsigned long long));
+				llu = va_arg(vap, unsigned long long);
+				md5_append_comma_multi_type(&ctx, fmtt, &llu);
 				break;
 			case Util_Hash_Format_Type_md5:
-				md5_append_comma_multi_type(&ctx, fmtt, &va_arg(vap, char*));
-				break;
 			case Util_Hash_Format_Type_s:
-				md5_append_comma_multi_type(&ctx, fmtt, &va_arg(vap, char*));
+				s = va_arg(vap, char*);
+				md5_append_comma_multi_type(&ctx, fmtt, &s);
 				break;
 			case Util_Hash_Format_Type_d:
-				md5_append_comma_multi_type(&ctx, fmtt, &va_arg(vap, int));
+				d = va_arg(vap, int);
+				md5_append_comma_multi_type(&ctx, fmtt, &d);
 				break;
 			case Util_Hash_Format_Type_u:
-				md5_append_comma_multi_type(&ctx, fmtt, &va_arg(vap, unsigned int));
+				u = va_arg(vap, unsigned int);
+				md5_append_comma_multi_type(&ctx, fmtt, &u);
 				break;
 		}
 	}
