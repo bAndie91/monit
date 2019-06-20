@@ -519,6 +519,7 @@ typedef struct myurl {
 typedef struct myregexpmatch {
         Operator_Type operator;         /**< Response content comparison operator */
         regex_t *regex;                   /* regex used to test the response body */
+        char* regex_str;                      /* original uncompiled regex string */
         
         struct myregexpmatch *next;
 } *RegexpMatch_T;
@@ -616,6 +617,7 @@ typedef struct Protocol_T {
 typedef struct mygenericproto {
         char *send;                           /* string to send, or NULL if expect */
         regex_t *expect;                  /* regex code to expect, or NULL if send */
+        char* expect_regex_str;                  /* original regexp string or NULL */
         /** For internal use */
         struct mygenericproto *next;
 } *Generic_T;

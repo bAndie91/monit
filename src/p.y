@@ -3921,6 +3921,7 @@ static void addgeneric(Port_T port, char *send, char *expect) {
                         regerror(reg_return, g->expect, errbuf, STRLEN);
                         yyerror2("Regex parsing error: %s", errbuf);
                 }
+                g->expect_regex_str = Str_dup(expect);
                 g->send = NULL;
         }
 }
@@ -4012,6 +4013,7 @@ static void  addurlrequestmatch(int operator, char *regex) {
                 regerror(reg_return, next_match->regex, errbuf, STRLEN);
                 yyerror2("Regex parsing error: %s", errbuf);
         }
+        next_match->regex_str = Str_dup(regex);
         next_match->next = NULL;
         if(urlrequest->match == NULL)
             urlrequest->match = next_match;

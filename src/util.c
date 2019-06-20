@@ -2167,7 +2167,7 @@ unsigned long long Util_EventAction_Hash_Port(Port_T o) {
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.cleanuplimitOP);
 	for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) {
 		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &g->send);
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &g->expect->re_str);
+		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &g->expect_regex_str);
 	}
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.hashtype);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.operator);
@@ -2207,7 +2207,7 @@ unsigned long long Util_EventAction_Hash_Port(Port_T o) {
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_b, &o->url_request.url.ipv6);
 	for(RegexpMatch_T r = o->url_request.match; r; r = r->next) {
 		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &r->operator);
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &r->regex->re_str);
+		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &r->regex_str);
 	}
 	
 	md5_finish(&ctx, (md5_byte_t *)digest);
