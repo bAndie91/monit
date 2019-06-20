@@ -481,22 +481,24 @@ typedef struct myaction {
 } *Action_T;
 
 
-/** Defines event's up and down actions */
-typedef struct myeventaction {
-        Action_T  failed;                  /**< Action in the case of failure down */
-        Action_T  succeeded;                    /**< Action in the case of failure up */
-        struct {
-        	Service_EventAction_UniqId_Type id;
-        	Every_Type event_type_mask;
-        	unsigned long long hash;
-        } uniqid;
-} *EventAction_T;
-
+typedef struct myserviceeventactionuniqidtriplet {
+        Service_EventAction_UniqId_Type id;
+        /* Event_Type */ long event_type_mask;
+        unsigned long long hash;
+} Service_EventAction_UniqId_triplet_T;
 
 typedef struct myserviceeventactionuniqid {
         Service_EventAction_UniqId_Type id;
         unsigned long long hash;
 } Service_EventAction_UniqId_T;  /* used as Event_post() argument */
+
+
+/** Defines event's up and down actions */
+typedef struct myeventaction {
+        Action_T  failed;                  /**< Action in the case of failure down */
+        Action_T  succeeded;                    /**< Action in the case of failure up */
+        Service_EventAction_UniqId_triplet_T uniqid;
+} *EventAction_T;
 
 
 /** Defines an url object */

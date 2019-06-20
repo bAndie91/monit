@@ -401,9 +401,9 @@ boolean_t Event_identical_actions(Action_T a1, Action_T a2) {
 }
 
 boolean_t Event_identical_action_uniqids(EventAction_T ea1, EventAction_T ea2) {
-	Service_EventAction_UniqId_T seauid1, seauid2;
-	seauid1 = ea1->uniqid;
-	seauid2 = ea2->uniqid;
+	Service_EventAction_UniqId_triplet_T *seauid1, *seauid2;
+	seauid1 = &ea1->uniqid;
+	seauid2 = &ea2->uniqid;
 	if(seauid1->id != seauid2->id) return false;
 	if(seauid1->id == Service_EventAction_UniqId_Empty) {
 		if(seauid1->event_type_mask != seauid2->event_type_mask) return false;
@@ -436,12 +436,9 @@ void Event_post(Service_T service, long id, Service_EventAction_UniqId_T service
         ASSERT(state == State_Failed || state == State_Succeeded || state == State_Changed || state == State_ChangedNot);
         
         {
-        	Service_EventAction_UniqId_T seauid;
-        	seauid = action->uniqid;
-        	if(!seauid) { NEW(seauid); action->uniqid = seauid; }
-        	seauid->id = service_eventaction_uniqid->id;
-        	seauid->event_type_mask = id;
-        	seauid->hash = service_eventaction_uniqid->hash;
+        	action->uniqid.id = service_eventaction_uniqid.id;
+        	action->uniqid.event_type_mask = id;
+        	action->uniqid.hash = service_eventaction_uniqid.hash;
         }
         
         va_list ap;
