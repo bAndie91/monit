@@ -2031,25 +2031,25 @@ void md5_append_comma_multi_type(md5_context_t* ctx_p, Util_Hash_Format_Type fmt
 
 	switch(fmtt) {
 		case Util_Hash_Format_Type_f:
-			snprintf(buf, STRLEN - 2, "%f", (double)*data);
+			snprintf(buf, STRLEN - 2, "%f", *(double*)data);
 			break;
 		case Util_Hash_Format_Type_lld:
-			snprintf(buf, STRLEN - 2, "%lld", (long long)*data);
+			snprintf(buf, STRLEN - 2, "%lld", *(long long*)data);
 			break;
 		case Util_Hash_Format_Type_llu:
-			snprintf(buf, STRLEN - 2, "%llu", (unsigned long long)*data);
+			snprintf(buf, STRLEN - 2, "%llu", *(unsigned long long*)data);
 			break;
 		case Util_Hash_Format_Type_md5:
-			snprintf(buf, STRLEN - 2, "%."MD_SIZE"s", (char*)*data);
+			snprintf(buf, STRLEN - 2, "%.64s" /* see MD_T and MD_SIZE */, *(char**)data);
 			break;
 		case Util_Hash_Format_Type_s:
-			snprintf(buf, STRLEN - 2, "%s", (char*)*data);
+			snprintf(buf, STRLEN - 2, "%s", *(char**)data);
 			break;
 		case Util_Hash_Format_Type_d:
-			snprintf(buf, STRLEN - 2, "%d", (int)*data);
+			snprintf(buf, STRLEN - 2, "%d", *(int*)data);
 			break;
 		case Util_Hash_Format_Type_u:
-			snprintf(buf, STRLEN - 2, "%u", (unsigned int)*data);
+			snprintf(buf, STRLEN - 2, "%u", *(unsigned int*)data);
 			break;
 	}
 	md5_append(ctx_p, (const md5_byte_t *){","}, 1);
