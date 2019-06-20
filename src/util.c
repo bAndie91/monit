@@ -2013,7 +2013,8 @@ typedef enum {
 	Util_Hash_Format_Type_llu,
 	Util_Hash_Format_Type_md5,
 	Util_Hash_Format_Type_s,
-	Util_Hash_Format_Type_u
+	Util_Hash_Format_Type_u,
+	Util_Hash_Format_Type_zu
 } __attribute__((__packed__)) Util_Hash_Format_Type;
 
 unsigned long long md5digest2ull(unsigned char digest[16]) {
@@ -2031,25 +2032,28 @@ void md5_append_comma_multi_type(md5_context_t* ctx_p, Util_Hash_Format_Type fmt
 
 	switch(fmtt) {
 		case Util_Hash_Format_Type_f:
-			snprintf(buf, STRLEN - 2, "%f", *(double*)data);
+			snprintf(buf, STRLEN - 1, "%f", *(double*)data);
 			break;
 		case Util_Hash_Format_Type_lld:
-			snprintf(buf, STRLEN - 2, "%lld", *(long long*)data);
+			snprintf(buf, STRLEN - 1, "%lld", *(long long*)data);
 			break;
 		case Util_Hash_Format_Type_llu:
-			snprintf(buf, STRLEN - 2, "%llu", *(unsigned long long*)data);
+			snprintf(buf, STRLEN - 1, "%llu", *(unsigned long long*)data);
 			break;
 		case Util_Hash_Format_Type_md5:
-			snprintf(buf, STRLEN - 2, "%.64s" /* see MD_T and MD_SIZE */, *(char**)data);
+			snprintf(buf, STRLEN - 1, "%.64s" /* see MD_T and MD_SIZE */, *(char**)data);
 			break;
 		case Util_Hash_Format_Type_s:
-			snprintf(buf, STRLEN - 2, "%s", *(char**)data);
+			snprintf(buf, STRLEN - 1, "%s", *(char**)data);
 			break;
 		case Util_Hash_Format_Type_d:
-			snprintf(buf, STRLEN - 2, "%d", *(int*)data);
+			snprintf(buf, STRLEN - 1, "%d", *(int*)data);
 			break;
 		case Util_Hash_Format_Type_u:
-			snprintf(buf, STRLEN - 2, "%u", *(unsigned int*)data);
+			snprintf(buf, STRLEN - 1, "%u", *(unsigned int*)data);
+			break;
+		case Util_Hash_Format_Type_zu:
+			snprintf(buf, STRLEN - 1, "%zu", *(size_t*)data);
 			break;
 	}
 	md5_append(ctx_p, (const md5_byte_t *){","}, 1);
@@ -2066,6 +2070,7 @@ unsigned long long Util_Hash_Format(short elements, ...) {
 	char* s;
 	int d;
 	unsigned int u;
+	size_t zu;
 	unsigned char digest[16];
 	
 	md5_init(&ctx);
@@ -2098,6 +2103,10 @@ unsigned long long Util_Hash_Format(short elements, ...) {
 			case Util_Hash_Format_Type_u:
 				u = va_arg(vap, unsigned int);
 				md5_append_comma_multi_type(&ctx, fmtt, &u);
+				break;
+			case Util_Hash_Format_Type_zu:
+				zu = va_arg(vap, size_t);
+				md5_append_comma_multi_type(&ctx, fmtt, &zu);
 				break;
 		}
 	}
@@ -2191,8 +2200,8 @@ unsigned long long Util_EventAction_Hash_Port(Port_T o) {
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.version.major);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.version.minor);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.content_length.operator);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_dll, &o->parameters.http.length);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.http.checksum_data_length);
+	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_lld, &o->parameters.http.content_length.length);
+	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_zu, &o->parameters.http.checksum_data_length);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.mysql.username);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.mysql.password);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.radius.secret);
