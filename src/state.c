@@ -267,6 +267,9 @@ static void _updateLinkSpeed(Service_T S, int duplex, long long speed) {
 }
 
 
+#define SERVICEEVENT_REPR_FMT "\tid=%ld collected=%lu.%lu mode=%u state=%u state_changed=%u state_map=%llu count=%u uniqid{id=%u event_type_mask=%ld hash=%llu}\n"
+#define SERVICEEVENT_REPR_FMT_NFIELDS 11
+
 static void _restoreV3() {
         // System header
         if (read(file, &booted, sizeof(booted)) != sizeof(booted))
@@ -312,26 +315,32 @@ static void _restoreV3() {
                 }
         }
         
+        /* Restore Service Eventlist with Event Actions, except Action's failed and succeeded fields */
         if (fseek(file2, 0L, SEEK_SET) == -1)
                 THROW(IOException, "Unable to seek eventstate file");
         char service_name[STRLEN];
         Event_T e;
+        EventAction_T ea;
         while(!feof(file2))
         {
         	fgets(service_name, sizeof(service_name), file2);  // TODO error handing
         	if(service_name[0] != '\0' && service_name[strlen(service_name)-1] == '\n') service_name[strlen(service_name)-1] = '\0';
         	Service_T service = Util_getService(service_name);
         	NEW(e);
-        	while(fscanf(file2, "\tid=%lu collected=%lu.%lu mode=%u state=%u state_changed=%u state_map=%llu count=%u\n", 
-        		&(e->id), &(e->collected.tv_sec), &(e->collected.tv_usec), &(e->mode), &(e->state), &(e->state_changed), &(e->state_map), &(e->count)) == 8)
+        	NEW(ea);
+        	// TODO: ftell/fseek
+        	while(fscanf(file2, SERVICEEVENT_REPR_FMT,
+        		&(e->id), &(e->collected.tv_sec), &(e->collected.tv_usec), &(e->mode), &(e->state), &(e->state_changed), &(e->state_map), &(e->count),
+        		&(ea->uniqid.id), &(ea->uniqid.event_type_mask), &(ea->uniqid.hash)) == SERVICEEVENT_REPR_FMT_NFIELDS)
         	{
-        		fprintf(stderr, "restore event id %u on service %s\n", e->id, service_name);
+        		fprintf(stderr, "restore event id %ld on service %s\n", e->id, service_name);
         		if(service)
         		{
         			e->source = service;
         			e->type = service->type;
-        			Event_T prevevent;
+        			e->action = ea;
         			if(service->eventlist) {
+	        			Event_T prevevent;
 	        			for(prevevent = service->eventlist; prevevent->next; prevevent = prevevent->next);
     	    			prevevent->next = e;
     	    		} else {
@@ -339,7 +348,10 @@ static void _restoreV3() {
     	    		}
         		}
         		NEW(e);
+        		NEW(ea);
         	}
+        	FREE(e);
+        	FREE(ea);
         }
 }
 
@@ -462,29 +474,6 @@ void State_close() {
         }
 }
 
-void State_save_write_event_action(Action_T a) {
-	fprintf(file2, "\taction id=%u count=%u cycles=%u repeat=%u exec=%u\n",
-		a->id,
-		a->count,
-		a->cycles,
-		a->repeat,
-		a->exec ? true : false
-	);
-	if(a->exec)
-	{
-		fprintf(file2, "\t\thas_uid=%u has_gid=%u uid=%u gid=%u timeout=%u args=%u\n",
-			a->exec->has_uid,
-			a->exec->has_gid,
-			a->exec->uid,
-			a->exec->gid,
-			a->exec->timeout,
-			a->exec->length
-		);
-		for(int i = 0; i < a->exec->length; i++)
-			// FIXME: CR/LF char in arg[i]
-			fprintf(file2, "\t\t\t%s\n", a->exec->arg[i]);
-	}
-}
 
 void State_save() {
         TRY
@@ -565,7 +554,7 @@ void State_save() {
                         fprintf(file2, "%s\n", service->name);
                         for(Event_T event = service->eventlist; event; event = event->next)
                         {
-                        	fprintf(file2, "\tid=%lu collected=%lu.%lu mode=%u state=%u state_changed=%u state_map=%llu count=%u\n",
+                        	fprintf(file2, SERVICEEVENT_REPR_FMT,
                         		event->id, 
                         		event->collected.tv_sec, 
                         		event->collected.tv_usec,
@@ -573,10 +562,11 @@ void State_save() {
                         		event->state,
                         		event->state_changed ? true : false,
                         		event->state_map,
-                        		event->count
+                        		event->count,
+	                        	event->action->uniqid.id,
+	                        	event->action->uniqid.event_type_mask,
+	                        	event->action->uniqid.hash
                         	);
-                        	State_save_write_event_action(event->action->failed);
-                        	State_save_write_event_action(event->action->succeeded);
                         }
                 }
                 if (fflush(file2))
