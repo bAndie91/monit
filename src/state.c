@@ -345,7 +345,6 @@ static void _restoreV3() {
                     break;
                 }
 
-                fprintf(stderr, "restore event id %ld on service %s\n", e->id, service_name);
                 if(service)
                 {
                     e->source = service;
