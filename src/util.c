@@ -2007,7 +2007,8 @@ const char *Util_timestr(int time) {
 
 
 typedef enum {
-	Util_Hash_Format_Type_d = 1,
+	Util_Hash_Format_Type_b = 1,
+	Util_Hash_Format_Type_d,
 	Util_Hash_Format_Type_f,
 	Util_Hash_Format_Type_lld,
 	Util_Hash_Format_Type_llu,
@@ -2020,7 +2021,7 @@ typedef enum {
 unsigned long long md5digest2ull(unsigned char digest[16]) {
 	unsigned long long result = 0LL;
 	for(int i = 0; i < 8; i++) {
-		result << 8;
+		result <<= 8;
 		result |= digest[i];
 	}
 	return result;
@@ -2055,6 +2056,9 @@ void md5_append_comma_multi_type(md5_context_t* ctx_p, Util_Hash_Format_Type fmt
 		case Util_Hash_Format_Type_zu:
 			snprintf(buf, STRLEN - 1, "%zu", *(size_t*)data);
 			break;
+		case Util_Hash_Format_Type_b:
+			snprintf(buf, STRLEN - 1, "%u", *(boolean_t*)data ? 1 : 0);
+			break;
 	}
 	md5_append(ctx_p, (const md5_byte_t *){","}, 1);
 	md5_append(ctx_p, (const md5_byte_t *)buf, strlen(buf));
@@ -2071,13 +2075,14 @@ unsigned long long Util_Hash_Format(short elements, ...) {
 	int d;
 	unsigned int u;
 	size_t zu;
+	boolean_t b;
 	unsigned char digest[16];
 	
 	md5_init(&ctx);
 	va_start(vap, elements);
 	for(; elements>0; elements--)
 	{
-		fmtt = va_arg(vap, Util_Hash_Format_Type);
+		fmtt = va_arg(vap, int);
 		switch(fmtt) {
 			case Util_Hash_Format_Type_f:
 				f = va_arg(vap, double);
@@ -2108,6 +2113,10 @@ unsigned long long Util_Hash_Format(short elements, ...) {
 				zu = va_arg(vap, size_t);
 				md5_append_comma_multi_type(&ctx, fmtt, &zu);
 				break;
+			case Util_Hash_Format_Type_b:
+				b = va_arg(vap, int);
+				md5_append_comma_multi_type(&ctx, fmtt, &b);
+				break;
 		}
 	}
 	va_end(vap);
@@ -2121,7 +2130,7 @@ unsigned long long Util_EventAction_Hash_Bandwidth(Bandwidth_T o) {
 	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_u, o->range, Util_Hash_Format_Type_d, o->rangecount, Util_Hash_Format_Type_llu, o->limit);
 }
 unsigned long long Util_EventAction_Hash_Checksum(Checksum_T o) {
-	return Util_Hash_Format(3, Util_Hash_Format_Type_d, o->test_changes, Util_Hash_Format_Type_u, o->type, Util_Hash_Format_Type_md5, o->hash);
+	return Util_Hash_Format(3, Util_Hash_Format_Type_b, o->test_changes, Util_Hash_Format_Type_u, o->type, Util_Hash_Format_Type_md5, o->hash);
 }
 unsigned long long Util_EventAction_Hash_FsResource(Filesystem_T o) {
 	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->resource, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_lld, o->limit_absolute, Util_Hash_Format_Type_f, o->limit_percent);
@@ -2133,10 +2142,13 @@ unsigned long long Util_EventAction_Hash_LinkSaturation(LinkSaturation_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_f, o->limit);
 }
 unsigned long long Util_EventAction_Hash_Match(Match_T o) {
-	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->ignore, Util_Hash_Format_Type_u, o->not, Util_Hash_Format_Type_s, o->match_string, Util_Hash_Format_Type_s, o->match_path);
+	return Util_Hash_Format(4, Util_Hash_Format_Type_b, o->ignore, Util_Hash_Format_Type_b, o->not, Util_Hash_Format_Type_s, o->match_string, Util_Hash_Format_Type_s, o->match_path);
 }
 unsigned long long Util_EventAction_Hash_Port(Port_T o) {
+	/* Port_T has many fields, also pointers among them, which are either NULL or have again many fields */
+	/* We gona append them after each other separated by commas */
 	md5_context_t ctx;
+	unsigned int counter;
 	unsigned char digest[16];
 	
 	md5_init(&ctx);
@@ -2183,10 +2195,17 @@ unsigned long long Util_EventAction_Hash_Port(Port_T o) {
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.waitlimitOP);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.gracefullimitOP);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.cleanuplimitOP);
+	
+	/* append the number of send/expect entries */
+	counter = 0;
+	for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) counter++;
+	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &counter);
+	/* append all the send/expect entries in order */
 	for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) {
 		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &g->send);
 		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &g->expect_regex_str);
 	}
+	
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.hashtype);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.operator);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.http.status);
@@ -2194,9 +2213,14 @@ unsigned long long Util_EventAction_Hash_Port(Port_T o) {
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.http.password);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.http.request);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.http.checksum);
-	for(List_T h = o->parameters.http.headers; h; h = h->next) {
+	
+	/* append the number of headers */
+	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.http.headers->length);
+	/* append each headers 1-by-1 */
+	for(list_t h = o->parameters.http.headers->head; h; h = h->next) {
 		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &h->e);
 	}
+	
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.version.major);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.version.minor);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.content_length.operator);
@@ -2213,19 +2237,39 @@ unsigned long long Util_EventAction_Hash_Port(Port_T o) {
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.websocket.host);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.websocket.origin);
 	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.websocket.request);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->protocol.name);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request.url.url);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request.url.protocol);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request.url.user);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request.url.password);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request.url.hostname);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request.url.path);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request.url.query);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->url_request.url.port);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_b, &o->url_request.url.ipv6);
-	for(RegexpMatch_T r = o->url_request.match; r; r = r->next) {
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &r->operator);
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &r->regex_str);
+	if(o->protocol) {
+		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->protocol->name);
+	} else {
+		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &(char*){""} /* 1 + 0 comma */);
+	}
+	if(o->url_request) {
+		if(o->url_request->url) {
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->url);
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->protocol);
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->user);
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->password);
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->hostname);
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->path);
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->query);
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->url_request->url->port);
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_b, &o->url_request->url->ipv6);
+		} else {
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &(char*){",,,,,,,,"} /* 1 + 8 commas */);
+		}
+		if(o->url_request->match)
+		{
+			counter = 0;
+			for(RegexpMatch_T r = o->url_request->match; r; r = r->next) counter++;
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &counter);
+			for(RegexpMatch_T r = o->url_request->match; r; r = r->next) {
+				md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &r->operator);
+				md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &r->regex_str);
+			}
+		} else {
+			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &(char*){"0"} /* ",0" */);
+		}
+	} else {
+		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &(char*){",,,,,,,,,0"} /* 1 + 8 commas + ",0" */);
 	}
 	
 	md5_finish(&ctx, (md5_byte_t *)digest);
@@ -2235,13 +2279,13 @@ unsigned long long Util_EventAction_Hash_Resource(Resource_T o) {
 	return Util_Hash_Format(3, Util_Hash_Format_Type_u, o->resource_id, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_f, o->limit);
 }
 unsigned long long Util_EventAction_Hash_Size(Size_T o) {
-	return Util_Hash_Format(4, Util_Hash_Format_Type_d, o->test_changes, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_llu, o->size);
+	return Util_Hash_Format(4, Util_Hash_Format_Type_b, o->test_changes, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_llu, o->size);
 }
 unsigned long long Util_EventAction_Hash_Status(Status_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_d, o->return_value);
 }
 unsigned long long Util_EventAction_Hash_Timestamp(Timestamp_T o) {
-	return Util_Hash_Format(3, Util_Hash_Format_Type_d, o->test_changes, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_d, o->time);
+	return Util_Hash_Format(3, Util_Hash_Format_Type_b, o->test_changes, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_d, o->time);
 }
 unsigned long long Util_EventAction_Hash_Uptime(Uptime_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_llu, o->uptime);
