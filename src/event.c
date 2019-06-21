@@ -435,7 +435,7 @@ void Event_post(Service_T service, long id, Service_EventAction_UniqId_T service
         ASSERT(s);
         ASSERT(state == State_Failed || state == State_Succeeded || state == State_Changed || state == State_ChangedNot);
         
-        {
+        { /* Construct unique ID for this EventAction */
         	action->uniqid.id = service_eventaction_uniqid.id;
         	action->uniqid.event_type_mask = id;
         	action->uniqid.hash = service_eventaction_uniqid.hash;
@@ -461,6 +461,12 @@ void Event_post(Service_T service, long id, Service_EventAction_UniqId_T service
                         FREE(e->message);
                         e->message = Str_dup(message);
 
+                        /* Copy current EventAction's 'failed' and 'succeeded' Actions,
+                           because restored events have empty action property (only uniqid 
+                           triplet is restored). */
+                        if(!e->action->failed) e->action->failed = action->failed;
+                        if(!e->action->succeeded) e->action->succeeded = action->succeeded;
+                        
                         Event_post_postrun(service, e, state);
                 }
                 e = e->next;
