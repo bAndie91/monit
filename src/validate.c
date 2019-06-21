@@ -1500,7 +1500,8 @@ State_Type check_system(Service_T s) {
 State_Type check_net(Service_T s) {
         boolean_t havedata = true;
         State_Type rv = State_Succeeded;
-        Service_EventAction_UniqId_T seauid_link = {Service_EventAction_UniqId_Link, 0LL};
+        Service_EventAction_UniqId_T seauid_linkstatus = {Service_EventAction_UniqId_LinkStatus, 0LL};
+        
         TRY
         {
                 Link_update(s->inf->priv.net.stats);
@@ -1509,55 +1510,56 @@ State_Type check_net(Service_T s) {
         {
                 havedata = false;
                 for (LinkStatus_T link = s->linkstatuslist; link; link = link->next)
-                        Event_post(s, Event_Link, seauid_link, State_Failed, link->action, "link data collection failed -- %s", Exception_frame.message);
+                        Event_post(s, Event_Link, seauid_linkstatus, State_Failed, link->action, "link data collection failed -- %s", Exception_frame.message);
         }
         END_TRY;
         if (! havedata)
                 return State_Failed; // Terminate test if no data are available
         for (LinkStatus_T link = s->linkstatuslist; link; link = link->next) {
-                Event_post(s, Event_Size, seauid_link, State_Succeeded, link->action, "link data collection succeeded");
+                Event_post(s, Event_Size, seauid_linkstatus, State_Succeeded, link->action, "link data collection succeeded");
         }
         // State
         if (! Link_getState(s->inf->priv.net.stats)) {
                 for (LinkStatus_T link = s->linkstatuslist; link; link = link->next)
-                        Event_post(s, Event_Link, seauid_link, State_Failed, link->action, "link down");
+                        Event_post(s, Event_Link, seauid_linkstatus, State_Failed, link->action, "link down");
                 return State_Failed; // Terminate test if the link is down
         } else {
                 for (LinkStatus_T link = s->linkstatuslist; link; link = link->next)
-                        Event_post(s, Event_Link, seauid_link, State_Succeeded, link->action, "link up");
+                        Event_post(s, Event_Link, seauid_linkstatus, State_Succeeded, link->action, "link up");
         }
         // Link errors
         long long oerrors = Link_getErrorsOutPerSecond(s->inf->priv.net.stats);
         for (LinkStatus_T link = s->linkstatuslist; link; link = link->next) {
                 if (oerrors) {
                         rv = State_Failed;
-                        Event_post(s, Event_Link, seauid_link, State_Failed, link->action, "%lld upload errors detected", oerrors);
+                        Event_post(s, Event_Link, seauid_linkstatus, State_Failed, link->action, "%lld upload errors detected", oerrors);
                 } else {
-                        Event_post(s, Event_Link, seauid_link, State_Succeeded, link->action, "upload errors check succeeded");
+                        Event_post(s, Event_Link, seauid_linkstatus, State_Succeeded, link->action, "upload errors check succeeded");
                 }
         }
         long long ierrors = Link_getErrorsInPerSecond(s->inf->priv.net.stats);
         for (LinkStatus_T link = s->linkstatuslist; link; link = link->next) {
                 if (ierrors) {
                         rv = State_Failed;
-                        Event_post(s, Event_Link, seauid_link, State_Failed, link->action, "%lld download errors detected", ierrors);
+                        Event_post(s, Event_Link, seauid_linkstatus, State_Failed, link->action, "%lld download errors detected", ierrors);
                 } else {
-                        Event_post(s, Event_Link, seauid_link, State_Succeeded, link->action, "download errors check succeeded");
+                        Event_post(s, Event_Link, seauid_linkstatus, State_Succeeded, link->action, "download errors check succeeded");
                 }
         }
         // Link speed
         int duplex = Link_getDuplex(s->inf->priv.net.stats);
         long long speed = Link_getSpeed(s->inf->priv.net.stats);
         for (LinkSpeed_T link = s->linkspeedlist; link; link = link->next) {
+                Service_EventAction_UniqId_T seauid_linkspeed = {Service_EventAction_UniqId_LinkSpeed, Util_EventAction_Hash_LinkSpeed(link)};
                 if (speed > 0 && link->speed) {
                         if (duplex > -1 && duplex != link->duplex)
-                                Event_post(s, Event_Speed, seauid_link, State_Changed, link->action, "link mode is now %s-duplex", duplex ? "full" : "half");
+                                Event_post(s, Event_Speed, seauid_linkspeed, State_Changed, link->action, "link mode is now %s-duplex", duplex ? "full" : "half");
                         else
-                                Event_post(s, Event_Speed, seauid_link, State_ChangedNot, link->action, "link mode has not changed since last cycle [current mode is %s-duplex]", duplex ? "full" : "half");
+                                Event_post(s, Event_Speed, seauid_linkspeed, State_ChangedNot, link->action, "link mode has not changed since last cycle [current mode is %s-duplex]", duplex ? "full" : "half");
                         if (speed != link->speed)
-                                Event_post(s, Event_Speed, seauid_link, State_Changed, link->action, "link speed changed to %.0lf Mb/s", (double)speed / 1000000.);
+                                Event_post(s, Event_Speed, seauid_linkspeed, State_Changed, link->action, "link speed changed to %.0lf Mb/s", (double)speed / 1000000.);
                         else
-                                Event_post(s, Event_Speed, seauid_link, State_ChangedNot, link->action, "link speed has not changed since last cycle [current speed = %.0lf Mb/s]", (double)speed / 1000000.);
+                                Event_post(s, Event_Speed, seauid_linkspeed, State_ChangedNot, link->action, "link speed has not changed since last cycle [current speed = %.0lf Mb/s]", (double)speed / 1000000.);
                 }
                 link->duplex = duplex;
                 link->speed = speed;
@@ -1567,22 +1569,22 @@ State_Type check_net(Service_T s) {
         double isaturation = Link_getSaturationInPerSecond(s->inf->priv.net.stats);
         if (osaturation >= 0. && isaturation >= 0.) {
                 for (LinkSaturation_T link = s->linksaturationlist; link; link = link->next) {
-                        Service_EventAction_UniqId_T seauid_lsat = {Service_EventAction_UniqId_LinkSaturation, Util_EventAction_Hash_LinkSaturation(link)};
+                        Service_EventAction_UniqId_T seauid_linksatur = {Service_EventAction_UniqId_LinkSaturation, Util_EventAction_Hash_LinkSaturation(link)};
                         if (duplex) {
                                 if (Util_evalDoubleQExpression(link->operator, osaturation, link->limit))
-                                        Event_post(s, Event_Saturation, seauid_lsat, State_Failed, link->action, "link upload saturation of %.1f%% matches limit [saturation %s %.1f%%]", osaturation, operatorshortnames[link->operator], link->limit);
+                                        Event_post(s, Event_Saturation, seauid_linksatur, State_Failed, link->action, "link upload saturation of %.1f%% matches limit [saturation %s %.1f%%]", osaturation, operatorshortnames[link->operator], link->limit);
                                 else
-                                        Event_post(s, Event_Saturation, seauid_lsat, State_Succeeded, link->action, "link upload saturation check succeeded [current upload saturation %.1f%%]", osaturation);
+                                        Event_post(s, Event_Saturation, seauid_linksatur, State_Succeeded, link->action, "link upload saturation check succeeded [current upload saturation %.1f%%]", osaturation);
                                 if (Util_evalDoubleQExpression(link->operator, isaturation, link->limit))
-                                        Event_post(s, Event_Saturation, seauid_lsat, State_Failed, link->action, "link download saturation of %.1f%% matches limit [saturation %s %.1f%%]", isaturation, operatorshortnames[link->operator], link->limit);
+                                        Event_post(s, Event_Saturation, seauid_linksatur, State_Failed, link->action, "link download saturation of %.1f%% matches limit [saturation %s %.1f%%]", isaturation, operatorshortnames[link->operator], link->limit);
                                 else
-                                        Event_post(s, Event_Saturation, seauid_lsat, State_Succeeded, link->action, "link download saturation check succeeded [current download saturation %.1f%%]", isaturation);
+                                        Event_post(s, Event_Saturation, seauid_linksatur, State_Succeeded, link->action, "link download saturation check succeeded [current download saturation %.1f%%]", isaturation);
                         } else {
                                 double iosaturation = osaturation + isaturation;
                                 if (Util_evalDoubleQExpression(link->operator, iosaturation, link->limit))
-                                        Event_post(s, Event_Saturation, seauid_lsat, State_Failed, link->action, "link saturation of %.1f%% matches limit [saturation %s %.1f%%]", iosaturation, operatorshortnames[link->operator], link->limit);
+                                        Event_post(s, Event_Saturation, seauid_linksatur, State_Failed, link->action, "link saturation of %.1f%% matches limit [saturation %s %.1f%%]", iosaturation, operatorshortnames[link->operator], link->limit);
                                 else
-                                        Event_post(s, Event_Saturation, seauid_lsat, State_Succeeded, link->action, "link saturation check succeeded [current saturation %.1f%%]", iosaturation);
+                                        Event_post(s, Event_Saturation, seauid_linksatur, State_Succeeded, link->action, "link saturation check succeeded [current saturation %.1f%%]", iosaturation);
                         }
                 }
         }
@@ -1590,7 +1592,7 @@ State_Type check_net(Service_T s) {
         char buf1[STRLEN], buf2[STRLEN];
         for (Bandwidth_T upload = s->uploadbyteslist; upload; upload = upload->next) {
                 long long obytes;
-                Service_EventAction_UniqId_T seauid_bw = {Service_EventAction_UniqId_Bandwidth, Util_EventAction_Hash_Bandwidth(upload)};
+                Service_EventAction_UniqId_T seauid_bwub = {Service_EventAction_UniqId_BandwidthUpByte, Util_EventAction_Hash_Bandwidth(upload)};
                 switch (upload->range) {
                         case Time_Minute:
                                 obytes = Link_getBytesOutPerMinute(s->inf->priv.net.stats, upload->rangecount);
@@ -1606,13 +1608,13 @@ State_Type check_net(Service_T s) {
                                 break;
                 }
                 if (Util_evalQExpression(upload->operator, obytes, upload->limit))
-                        Event_post(s, Event_ByteOut, seauid_bw, State_Failed, upload->action, "%supload %s matches limit [upload rate %s %s in last %d %s]", upload->range != Time_Second ? "total " : "", Str_bytesToSize(obytes, buf1), operatorshortnames[upload->operator], Str_bytesToSize(upload->limit, buf2), upload->rangecount, Util_timestr(upload->range));
+                        Event_post(s, Event_ByteOut, seauid_bwub, State_Failed, upload->action, "%supload %s matches limit [upload rate %s %s in last %d %s]", upload->range != Time_Second ? "total " : "", Str_bytesToSize(obytes, buf1), operatorshortnames[upload->operator], Str_bytesToSize(upload->limit, buf2), upload->rangecount, Util_timestr(upload->range));
                 else
-                        Event_post(s, Event_ByteOut, seauid_bw, State_Succeeded, upload->action, "%supload check succeeded [current upload rate %s in last %d %s]", upload->range != Time_Second ? "total " : "", Str_bytesToSize(obytes, buf1), upload->rangecount, Util_timestr(upload->range));
+                        Event_post(s, Event_ByteOut, seauid_bwub, State_Succeeded, upload->action, "%supload check succeeded [current upload rate %s in last %d %s]", upload->range != Time_Second ? "total " : "", Str_bytesToSize(obytes, buf1), upload->rangecount, Util_timestr(upload->range));
         }
         for (Bandwidth_T upload = s->uploadpacketslist; upload; upload = upload->next) {
                 long long opackets;
-                Service_EventAction_UniqId_T seauid_bw = {Service_EventAction_UniqId_Bandwidth, Util_EventAction_Hash_Bandwidth(upload)};
+                Service_EventAction_UniqId_T seauid_bwup = {Service_EventAction_UniqId_BandwidthUpPckt, Util_EventAction_Hash_Bandwidth(upload)};
                 switch (upload->range) {
                         case Time_Minute:
                                 opackets = Link_getPacketsOutPerMinute(s->inf->priv.net.stats, upload->rangecount);
@@ -1628,14 +1630,14 @@ State_Type check_net(Service_T s) {
                                 break;
                 }
                 if (Util_evalQExpression(upload->operator, opackets, upload->limit))
-                        Event_post(s, Event_PacketOut, seauid_bw, State_Failed, upload->action, "%supload packets %lld matches limit [upload packets %s %lld in last %d %s]", upload->range != Time_Second ? "total " : "", opackets, operatorshortnames[upload->operator], upload->limit, upload->rangecount, Util_timestr(upload->range));
+                        Event_post(s, Event_PacketOut, seauid_bwup, State_Failed, upload->action, "%supload packets %lld matches limit [upload packets %s %lld in last %d %s]", upload->range != Time_Second ? "total " : "", opackets, operatorshortnames[upload->operator], upload->limit, upload->rangecount, Util_timestr(upload->range));
                 else
-                        Event_post(s, Event_PacketOut, seauid_bw, State_Succeeded, upload->action, "%supload packets check succeeded [current upload packets %lld in last %d %s]", upload->range != Time_Second ? "total " : "", opackets, upload->rangecount, Util_timestr(upload->range));
+                        Event_post(s, Event_PacketOut, seauid_bwup, State_Succeeded, upload->action, "%supload packets check succeeded [current upload packets %lld in last %d %s]", upload->range != Time_Second ? "total " : "", opackets, upload->rangecount, Util_timestr(upload->range));
         }
         // Download
         for (Bandwidth_T download = s->downloadbyteslist; download; download = download->next) {
                 long long ibytes;
-                Service_EventAction_UniqId_T seauid_bw = {Service_EventAction_UniqId_Bandwidth, Util_EventAction_Hash_Bandwidth(download)};
+                Service_EventAction_UniqId_T seauid_bwdb = {Service_EventAction_UniqId_BandwidthDnByte, Util_EventAction_Hash_Bandwidth(download)};
                 switch (download->range) {
                         case Time_Minute:
                                 ibytes = Link_getBytesInPerMinute(s->inf->priv.net.stats, download->rangecount);
@@ -1651,12 +1653,13 @@ State_Type check_net(Service_T s) {
                                 break;
                 }
                 if (Util_evalQExpression(download->operator, ibytes, download->limit))
-                        Event_post(s, Event_ByteIn, seauid_bw, State_Failed, download->action, "%sdownload %s matches limit [download rate %s %s in last %d %s]", download->range != Time_Second ? "total " : "", Str_bytesToSize(ibytes, buf1), operatorshortnames[download->operator], Str_bytesToSize(download->limit, buf2), download->rangecount, Util_timestr(download->range));
+                        Event_post(s, Event_ByteIn, seauid_bwdb, State_Failed, download->action, "%sdownload %s matches limit [download rate %s %s in last %d %s]", download->range != Time_Second ? "total " : "", Str_bytesToSize(ibytes, buf1), operatorshortnames[download->operator], Str_bytesToSize(download->limit, buf2), download->rangecount, Util_timestr(download->range));
                 else
-                        Event_post(s, Event_ByteIn, seauid_bw, State_Succeeded, download->action, "%sdownload check succeeded [current download rate %s in last %d %s]", download->range != Time_Second ? "total " : "", Str_bytesToSize(ibytes, buf1), download->rangecount, Util_timestr(download->range));
+                        Event_post(s, Event_ByteIn, seauid_bwdb, State_Succeeded, download->action, "%sdownload check succeeded [current download rate %s in last %d %s]", download->range != Time_Second ? "total " : "", Str_bytesToSize(ibytes, buf1), download->rangecount, Util_timestr(download->range));
         }
         for (Bandwidth_T download = s->downloadpacketslist; download; download = download->next) {
                 long long ipackets;
+                Service_EventAction_UniqId_T seauid_bwdp = {Service_EventAction_UniqId_BandwidthDnPckt, Util_EventAction_Hash_Bandwidth(download)};
                 switch (download->range) {
                         case Time_Minute:
                                 ipackets = Link_getPacketsInPerMinute(s->inf->priv.net.stats, download->rangecount);
@@ -1672,9 +1675,9 @@ State_Type check_net(Service_T s) {
                                 break;
                 }
                 if (Util_evalQExpression(download->operator, ipackets, download->limit))
-                        Event_post(s, Event_PacketIn, seauid_bw, State_Failed, download->action, "%sdownload packets %lld matches limit [download packets %s %lld in last %d %s]", download->range != Time_Second ? "total " : "", ipackets, operatorshortnames[download->operator], download->limit, download->rangecount, Util_timestr(download->range));
+                        Event_post(s, Event_PacketIn, seauid_bwdp, State_Failed, download->action, "%sdownload packets %lld matches limit [download packets %s %lld in last %d %s]", download->range != Time_Second ? "total " : "", ipackets, operatorshortnames[download->operator], download->limit, download->rangecount, Util_timestr(download->range));
                 else
-                        Event_post(s, Event_PacketIn, seauid_bw, State_Succeeded, download->action, "%sdownload packets check succeeded [current download packets %lld in last %d %s]", download->range != Time_Second ? "total " : "", ipackets, download->rangecount, Util_timestr(download->range));
+                        Event_post(s, Event_PacketIn, seauid_bwdp, State_Succeeded, download->action, "%sdownload packets check succeeded [current download packets %lld in last %d %s]", download->range != Time_Second ? "total " : "", ipackets, download->rangecount, Util_timestr(download->range));
         }
         return rv;
 }

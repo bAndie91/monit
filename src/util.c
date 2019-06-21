@@ -2138,6 +2138,9 @@ unsigned long long Util_EventAction_Hash_FsResource(Filesystem_T o) {
 unsigned long long Util_EventAction_Hash_Icmp(Icmp_T o) {
 	return Util_Hash_Format(8, Util_Hash_Format_Type_d, o->type, Util_Hash_Format_Type_d, o->size, Util_Hash_Format_Type_d, o->count, Util_Hash_Format_Type_d, o->timeout, Util_Hash_Format_Type_u, o->is_available, Util_Hash_Format_Type_u, o->family, Util_Hash_Format_Type_f, o->response, Util_Hash_Format_Type_s, o->outgoing.ip);
 }
+unsigned long long Util_EventAction_Hash_LinkSpeed(LinkSpeed_T o) {
+	return Util_Hash_Format(2, Util_Hash_Format_Type_d, o->duplex, Util_Hash_Format_Type_lld, o->speed);
+}
 unsigned long long Util_EventAction_Hash_LinkSaturation(LinkSaturation_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_f, o->limit);
 }

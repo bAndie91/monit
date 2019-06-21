@@ -420,6 +420,7 @@ unsigned long long Util_EventAction_Hash_Fsflag(Fsflag_T);
 unsigned long long Util_EventAction_Hash_FsResource(Filesystem_T);
 unsigned long long Util_EventAction_Hash_Icmp(Icmp_T);
 unsigned long long Util_EventAction_Hash_LinkSaturation(LinkSaturation_T);
+unsigned long long Util_EventAction_Hash_LinkSpeed(LinkSpeed_T);
 unsigned long long Util_EventAction_Hash_Match(Match_T);
 unsigned long long Util_EventAction_Hash_Port(Port_T);
 unsigned long long Util_EventAction_Hash_Resource(Resource_T);
