@@ -2206,11 +2206,15 @@ Fnv64_t Util_EventAction_Hash_Port(Port_T o) {
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.request);
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.checksum);
 	
-	/* append the number of headers */
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.http.headers->length);
-	/* append each headers 1-by-1 */
-	for(list_t h = o->parameters.http.headers->head; h; h = h->next) {
-		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &h->e);
+	if(o->parameters.http.headers) {
+		/* append the number of headers */
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.http.headers->length);
+		/* append each headers 1-by-1 */
+		for(list_t h = o->parameters.http.headers->head; h; h = h->next) {
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &h->e);
+		}
+	} else {
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &(unsigned int){0});
 	}
 	
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.version.major);
@@ -2258,7 +2262,7 @@ Fnv64_t Util_EventAction_Hash_Port(Port_T o) {
 				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &r->regex_str);
 			}
 		} else {
-			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &(char*){"0"} /* ",0" */);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &(unsigned int){0} /* ",0" */);
 		}
 	} else {
 		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &(char*){",,,,,,,,,0"} /* 1 + 8 commas + ",0" */);
