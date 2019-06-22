@@ -131,6 +131,8 @@ typedef enum {
 #include "system/Link.h"
 #include "thread/Thread.h"
 
+// libfnv
+#include "fnv.h"
 
 #define MONITRC            "monitrc"
 #define TIMEFORMAT         "%Z %b %e %T"
@@ -488,12 +490,12 @@ typedef struct myaction {
 typedef struct myserviceeventactionuniqidtriplet {
         Service_EventAction_UniqId_Type id;
         /* Event_Type */ long event_type_mask;
-        unsigned long long hash;
+        Fnv64_t hash;
 } Service_EventAction_UniqId_triplet_T;
 
 typedef struct myserviceeventactionuniqid {
         Service_EventAction_UniqId_Type id;
-        unsigned long long hash;
+        Fnv64_t hash;
 } Service_EventAction_UniqId_T;  /* used as Event_post() argument */
 
 

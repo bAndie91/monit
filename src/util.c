@@ -2018,15 +2018,6 @@ typedef enum {
 	Util_Hash_Format_Type_zu
 } __attribute__((__packed__)) Util_Hash_Format_Type;
 
-unsigned long long md5digest2ull(unsigned char digest[16]) {
-	unsigned long long result = 0LL;
-	for(int i = 0; i < 8; i++) {
-		result <<= 8;
-		result |= digest[i];
-	}
-	return result;
-}
-
 void md5_append_comma_multi_type(md5_context_t* ctx_p, Util_Hash_Format_Type fmtt, void* data)
 {
 	char buf[STRLEN];
@@ -2062,9 +2053,10 @@ void md5_append_comma_multi_type(md5_context_t* ctx_p, Util_Hash_Format_Type fmt
 	}
 	md5_append(ctx_p, (const md5_byte_t *){","}, 1);
 	md5_append(ctx_p, (const md5_byte_t *)buf, strlen(buf));
+	fprintf(stderr, ",%s", buf);
 }
 
-unsigned long long Util_Hash_Format(short elements, ...) {
+Fnv64_t Util_Hash_Format(short elements, ...) {
 	md5_context_t ctx;
 	va_list vap;
 	Util_Hash_Format_Type fmtt;
@@ -2121,33 +2113,34 @@ unsigned long long Util_Hash_Format(short elements, ...) {
 	}
 	va_end(vap);
 	md5_finish(&ctx, (md5_byte_t *)digest);
-	return md5digest2ull(digest);
+	fprintf(stderr, "\n");
+	return digest;
 }
-unsigned long long Util_EventAction_Hash_ActionRate(ActionRate_T o) {
+Fnv64_t Util_EventAction_Hash_ActionRate(ActionRate_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_d, o->count, Util_Hash_Format_Type_d, o->cycle);
 }
-unsigned long long Util_EventAction_Hash_Bandwidth(Bandwidth_T o) {
+Fnv64_t Util_EventAction_Hash_Bandwidth(Bandwidth_T o) {
 	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_u, o->range, Util_Hash_Format_Type_d, o->rangecount, Util_Hash_Format_Type_llu, o->limit);
 }
-unsigned long long Util_EventAction_Hash_Checksum(Checksum_T o) {
+Fnv64_t Util_EventAction_Hash_Checksum(Checksum_T o) {
 	return Util_Hash_Format(3, Util_Hash_Format_Type_b, o->test_changes, Util_Hash_Format_Type_u, o->type, Util_Hash_Format_Type_md5, o->hash);
 }
-unsigned long long Util_EventAction_Hash_FsResource(Filesystem_T o) {
+Fnv64_t Util_EventAction_Hash_FsResource(Filesystem_T o) {
 	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->resource, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_lld, o->limit_absolute, Util_Hash_Format_Type_f, o->limit_percent);
 }
-unsigned long long Util_EventAction_Hash_Icmp(Icmp_T o) {
+Fnv64_t Util_EventAction_Hash_Icmp(Icmp_T o) {
 	return Util_Hash_Format(8, Util_Hash_Format_Type_d, o->type, Util_Hash_Format_Type_d, o->size, Util_Hash_Format_Type_d, o->count, Util_Hash_Format_Type_d, o->timeout, Util_Hash_Format_Type_u, o->is_available, Util_Hash_Format_Type_u, o->family, Util_Hash_Format_Type_f, o->response, Util_Hash_Format_Type_s, o->outgoing.ip);
 }
-unsigned long long Util_EventAction_Hash_LinkSpeed(LinkSpeed_T o) {
+Fnv64_t Util_EventAction_Hash_LinkSpeed(LinkSpeed_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_d, o->duplex, Util_Hash_Format_Type_lld, o->speed);
 }
-unsigned long long Util_EventAction_Hash_LinkSaturation(LinkSaturation_T o) {
+Fnv64_t Util_EventAction_Hash_LinkSaturation(LinkSaturation_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_f, o->limit);
 }
-unsigned long long Util_EventAction_Hash_Match(Match_T o) {
+Fnv64_t Util_EventAction_Hash_Match(Match_T o) {
 	return Util_Hash_Format(4, Util_Hash_Format_Type_b, o->ignore, Util_Hash_Format_Type_b, o->not, Util_Hash_Format_Type_s, o->match_string, Util_Hash_Format_Type_s, o->match_path);
 }
-unsigned long long Util_EventAction_Hash_Port(Port_T o) {
+Fnv64_t Util_EventAction_Hash_Port(Port_T o) {
 	/* Port_T has many fields, also pointers among them, which are either NULL or have again many fields */
 	/* We gona append them after each other separated by commas */
 	md5_context_t ctx;
@@ -2276,20 +2269,21 @@ unsigned long long Util_EventAction_Hash_Port(Port_T o) {
 	}
 	
 	md5_finish(&ctx, (md5_byte_t *)digest);
-	return md5digest2ull(digest);
+	fprintf(stderr, "\n");
+	return digest;
 }
-unsigned long long Util_EventAction_Hash_Resource(Resource_T o) {
+Fnv64_t Util_EventAction_Hash_Resource(Resource_T o) {
 	return Util_Hash_Format(3, Util_Hash_Format_Type_u, o->resource_id, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_f, o->limit);
 }
-unsigned long long Util_EventAction_Hash_Size(Size_T o) {
+Fnv64_t Util_EventAction_Hash_Size(Size_T o) {
 	return Util_Hash_Format(4, Util_Hash_Format_Type_b, o->test_changes, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_llu, o->size);
 }
-unsigned long long Util_EventAction_Hash_Status(Status_T o) {
+Fnv64_t Util_EventAction_Hash_Status(Status_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_d, o->return_value);
 }
-unsigned long long Util_EventAction_Hash_Timestamp(Timestamp_T o) {
+Fnv64_t Util_EventAction_Hash_Timestamp(Timestamp_T o) {
 	return Util_Hash_Format(3, Util_Hash_Format_Type_b, o->test_changes, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_d, o->time);
 }
-unsigned long long Util_EventAction_Hash_Uptime(Uptime_T o) {
+Fnv64_t Util_EventAction_Hash_Uptime(Uptime_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_llu, o->uptime);
 }
