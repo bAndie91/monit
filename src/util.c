@@ -2018,7 +2018,7 @@ typedef enum {
 	Util_Hash_Format_Type_zu
 } __attribute__((__packed__)) Util_Hash_Format_Type;
 
-void md5_append_comma_multi_type(md5_context_t* ctx_p, Util_Hash_Format_Type fmtt, void* data)
+void fnv1a64_append_comma_multi_type(Fnv64_t *hval, Util_Hash_Format_Type fmtt, void* data)
 {
 	char buf[STRLEN];
 
@@ -2051,13 +2051,13 @@ void md5_append_comma_multi_type(md5_context_t* ctx_p, Util_Hash_Format_Type fmt
 			snprintf(buf, STRLEN - 1, "%u", *(boolean_t*)data ? 1 : 0);
 			break;
 	}
-	md5_append(ctx_p, (const md5_byte_t *){","}, 1);
-	md5_append(ctx_p, (const md5_byte_t *)buf, strlen(buf));
-	fprintf(stderr, ",%s", buf);
+	
+	*hval = fnv_64a_str(",", *hval);
+	*hval = fnv_64a_str(buf, *hval);
 }
 
 Fnv64_t Util_Hash_Format(short elements, ...) {
-	md5_context_t ctx;
+	Fnv64_t hash;
 	va_list vap;
 	Util_Hash_Format_Type fmtt;
 	double f;
@@ -2068,9 +2068,8 @@ Fnv64_t Util_Hash_Format(short elements, ...) {
 	unsigned int u;
 	size_t zu;
 	boolean_t b;
-	unsigned char digest[16];
 	
-	md5_init(&ctx);
+	hash = FNV1A_64_INIT;
 	va_start(vap, elements);
 	for(; elements>0; elements--)
 	{
@@ -2078,43 +2077,41 @@ Fnv64_t Util_Hash_Format(short elements, ...) {
 		switch(fmtt) {
 			case Util_Hash_Format_Type_f:
 				f = va_arg(vap, double);
-				md5_append_comma_multi_type(&ctx, fmtt, &f);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &f);
 				break;
 			case Util_Hash_Format_Type_lld:
 				lld = va_arg(vap, long long);
-				md5_append_comma_multi_type(&ctx, fmtt, &lld);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &lld);
 				break;
 			case Util_Hash_Format_Type_llu:
 				llu = va_arg(vap, unsigned long long);
-				md5_append_comma_multi_type(&ctx, fmtt, &llu);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &llu);
 				break;
 			case Util_Hash_Format_Type_md5:
 			case Util_Hash_Format_Type_s:
 				s = va_arg(vap, char*);
-				md5_append_comma_multi_type(&ctx, fmtt, &s);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &s);
 				break;
 			case Util_Hash_Format_Type_d:
 				d = va_arg(vap, int);
-				md5_append_comma_multi_type(&ctx, fmtt, &d);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &d);
 				break;
 			case Util_Hash_Format_Type_u:
 				u = va_arg(vap, unsigned int);
-				md5_append_comma_multi_type(&ctx, fmtt, &u);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &u);
 				break;
 			case Util_Hash_Format_Type_zu:
 				zu = va_arg(vap, size_t);
-				md5_append_comma_multi_type(&ctx, fmtt, &zu);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &zu);
 				break;
 			case Util_Hash_Format_Type_b:
 				b = va_arg(vap, int);
-				md5_append_comma_multi_type(&ctx, fmtt, &b);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &b);
 				break;
 		}
 	}
 	va_end(vap);
-	md5_finish(&ctx, (md5_byte_t *)digest);
-	fprintf(stderr, "\n");
-	return digest;
+	return hash;
 }
 Fnv64_t Util_EventAction_Hash_ActionRate(ActionRate_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_d, o->count, Util_Hash_Format_Type_d, o->cycle);
@@ -2143,134 +2140,131 @@ Fnv64_t Util_EventAction_Hash_Match(Match_T o) {
 Fnv64_t Util_EventAction_Hash_Port(Port_T o) {
 	/* Port_T has many fields, also pointers among them, which are either NULL or have again many fields */
 	/* We gona append them after each other separated by commas */
-	md5_context_t ctx;
+	Fnv64_t hash;
 	unsigned int counter;
-	unsigned char digest[16];
 	
-	md5_init(&ctx);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->hostname);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->target.unix.pathname);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->target.net.ssl.flags);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->target.net.ssl.verify);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->target.net.ssl.allowSelfSigned);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->target.net.ssl.version);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->target.net.ssl.checksumType);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->target.net.ssl.minimumValidDays);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->target.net.ssl.checksum);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->target.net.ssl.clientpemfile);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->target.net.ssl.CACertificateFile);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->target.net.ssl.CACertificatePath);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->target.net.port);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->outgoing.ip);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->timeout);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->retry);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_f, &o->response);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->type);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->family);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->is_available);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.apachestatus.username);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.apachestatus.password);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.apachestatus.path);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.loglimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.closelimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.dnslimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.keepalivelimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.replylimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.requestlimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.startlimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.waitlimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.gracefullimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.apachestatus.cleanuplimit);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.loglimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.closelimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.dnslimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.keepalivelimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.replylimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.requestlimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.startlimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.waitlimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.gracefullimitOP);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.apachestatus.cleanuplimitOP);
+	hash = FNV1A_64_INIT;
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->hostname);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.unix.pathname);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->target.net.ssl.flags);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.verify);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.allowSelfSigned);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.version);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->target.net.ssl.checksumType);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.minimumValidDays);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.checksum);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.clientpemfile);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.CACertificateFile);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.CACertificatePath);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.port);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->outgoing.ip);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->timeout);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->retry);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_f, &o->response);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->type);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->family);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->is_available);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.username);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.password);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.path);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.loglimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.closelimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.dnslimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.keepalivelimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.replylimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.requestlimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.startlimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.waitlimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.gracefullimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.cleanuplimit);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.loglimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.closelimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.dnslimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.keepalivelimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.replylimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.requestlimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.startlimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.waitlimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.gracefullimitOP);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.cleanuplimitOP);
 	
 	/* append the number of send/expect entries */
 	counter = 0;
 	for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) counter++;
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &counter);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &counter);
 	/* append all the send/expect entries in order */
 	for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) {
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &g->send);
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &g->expect_regex_str);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &g->send);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &g->expect_regex_str);
 	}
 	
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.hashtype);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.operator);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.http.status);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.http.username);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.http.password);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.http.request);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.http.checksum);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.hashtype);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.operator);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.http.status);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.username);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.password);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.request);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.checksum);
 	
 	/* append the number of headers */
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.http.headers->length);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.http.headers->length);
 	/* append each headers 1-by-1 */
 	for(list_t h = o->parameters.http.headers->head; h; h = h->next) {
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &h->e);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &h->e);
 	}
 	
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.version.major);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.version.minor);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &o->parameters.http.content_length.operator);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_lld, &o->parameters.http.content_length.length);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_zu, &o->parameters.http.checksum_data_length);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.mysql.username);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.mysql.password);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.radius.secret);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.sip.maxforward);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.sip.target);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.smtp.username);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.smtp.password);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->parameters.websocket.version);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.websocket.host);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.websocket.origin);
-	md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->parameters.websocket.request);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.version.major);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.version.minor);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.content_length.operator);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_lld, &o->parameters.http.content_length.length);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_zu, &o->parameters.http.checksum_data_length);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.mysql.username);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.mysql.password);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.radius.secret);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.sip.maxforward);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.sip.target);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.smtp.username);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.smtp.password);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.websocket.version);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.host);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.origin);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.request);
 	if(o->protocol) {
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->protocol->name);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->protocol->name);
 	} else {
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &(char*){""} /* 1 + 0 comma */);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &(char*){""} /* 1 + 0 comma */);
 	}
 	if(o->url_request) {
 		if(o->url_request->url) {
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->url);
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->protocol);
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->user);
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->password);
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->hostname);
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->path);
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &o->url_request->url->query);
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_d, &o->url_request->url->port);
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_b, &o->url_request->url->ipv6);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->url_request->url->url);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->url_request->url->protocol);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->url_request->url->user);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->url_request->url->password);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->url_request->url->hostname);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->url_request->url->path);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->url_request->url->query);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->url_request->url->port);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_b, &o->url_request->url->ipv6);
 		} else {
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &(char*){",,,,,,,,"} /* 1 + 8 commas */);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &(char*){",,,,,,,,"} /* 1 + 8 commas */);
 		}
 		if(o->url_request->match)
 		{
 			counter = 0;
 			for(RegexpMatch_T r = o->url_request->match; r; r = r->next) counter++;
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &counter);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &counter);
 			for(RegexpMatch_T r = o->url_request->match; r; r = r->next) {
-				md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_u, &r->operator);
-				md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &r->regex_str);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &r->operator);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &r->regex_str);
 			}
 		} else {
-			md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &(char*){"0"} /* ",0" */);
+			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &(char*){"0"} /* ",0" */);
 		}
 	} else {
-		md5_append_comma_multi_type(&ctx, Util_Hash_Format_Type_s, &(char*){",,,,,,,,,0"} /* 1 + 8 commas + ",0" */);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &(char*){",,,,,,,,,0"} /* 1 + 8 commas + ",0" */);
 	}
 	
-	md5_finish(&ctx, (md5_byte_t *)digest);
-	fprintf(stderr, "\n");
-	return digest;
+	return hash;
 }
 Fnv64_t Util_EventAction_Hash_Resource(Resource_T o) {
 	return Util_Hash_Format(3, Util_Hash_Format_Type_u, o->resource_id, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_f, o->limit);
