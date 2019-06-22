@@ -183,6 +183,7 @@ typedef struct mystate0 {
 
 
 static int file = -1;
+static FILE* file2 = NULL;
 static uint64_t booted = 0ULL;
 
 
@@ -266,6 +267,9 @@ static void _updateLinkSpeed(Service_T S, int duplex, long long speed) {
 }
 
 
+#define SERVICEEVENT_REPR_FMT "\tid=%ld collected=%lu.%lu mode=%u state=%u state_changed=%u state_map=%llu count=%u uniqid{id=%u event_type_mask=%ld hash=%llu}\n"
+#define SERVICEEVENT_REPR_FMT_NFIELDS 11
+
 static void _restoreV3() {
         // System header
         if (read(file, &booted, sizeof(booted)) != sizeof(booted))
@@ -309,6 +313,52 @@ static void _restoreV3() {
                                         break;
                         }
                 }
+        }
+        
+        /* Restore Service Eventlist with Event Actions, except Action's failed and succeeded fields */
+        char service_name[STRLEN];
+        Service_T service;
+        Event_T e;
+        EventAction_T ea;
+        long pos2;
+
+        if (fseek(file2, 0L, SEEK_SET) == -1)
+                THROW(IOException, "Unable to seek eventstate file");
+        
+        while(!feof(file2))
+        {
+            if(fgets(service_name, sizeof(service_name), file2) == NULL) break;
+            if(service_name[0] != '\0' && service_name[strlen(service_name)-1] == '\n') service_name[strlen(service_name)-1] = '\0';
+            service = Util_getService(service_name);
+            while(1)
+            {
+                NEW(e);
+                NEW(ea);
+                pos2 = ftell(file2);
+                if(fscanf(file2, SERVICEEVENT_REPR_FMT,
+                    &(e->id), &(e->collected.tv_sec), &(e->collected.tv_usec), &(e->mode), &(e->state), &(e->state_changed), &(e->state_map), &(e->count),
+                    &(ea->uniqid.id), &(ea->uniqid.event_type_mask), &(ea->uniqid.hash)) != SERVICEEVENT_REPR_FMT_NFIELDS)
+                {
+                    FREE(e);
+                    FREE(ea);
+                    fseek(file2, pos2, SEEK_SET);
+                    break;
+                }
+
+                if(service)
+                {
+                    e->source = service;
+                    e->type = service->type;
+                    e->action = ea;
+                    if(service->eventlist) {
+                        Event_T prevevent;
+                        for(prevevent = service->eventlist; prevevent->next; prevevent = prevevent->next);
+                        prevevent->next = e;
+                    } else {
+                        service->eventlist = e;
+                    }
+                }
+            }
         }
 }
 
@@ -402,6 +452,15 @@ boolean_t State_open() {
                 LogError("State file '%s': cannot open for write -- %s\n", Run.files.state, STRERROR);
                 return false;
         }
+        int file2fd;
+        if ((file2fd = open(Run.files.eventstate, O_RDWR | O_CREAT, 0600)) == -1) {
+                LogError("Event state file '%s': cannot open for write -- %s\n", Run.files.eventstate, STRERROR);
+                return false;
+        }
+        if((file2 = fdopen(file2fd, "w+")) == NULL) {
+                LogError("Event state file '%s' descriptor: cannot open -- %s\n", Run.files.eventstate, STRERROR);
+                return false;
+        }
         atexit(State_close);
         return true;
 }
@@ -413,6 +472,12 @@ void State_close() {
                         LogError("State file '%s': close error -- %s\n", Run.files.state, STRERROR);
                 else
                         file = -1;
+        }
+        if (file2 != NULL) {
+                if (fclose(file2) != 0)
+                        LogError("Event state file '%s': close error -- %s\n", Run.files.eventstate, STRERROR);
+                else
+                        file2 = NULL;
         }
 }
 
@@ -486,6 +551,33 @@ void State_save() {
                 }
                 if (fsync(file))
                         THROW(IOException, "Unable to sync -- %s", STRERROR);
+                
+                if (ftruncate(fileno(file2), 0L) == -1)
+                        THROW(IOException, "Unable to truncate eventstate file");
+                if (fseek(file2, 0L, SEEK_SET) == -1)
+                        THROW(IOException, "Unable to seek eventstate file");
+                for (Service_T service = servicelist; service; service = service->next) {
+                        // TODO: write error handling
+                        fprintf(file2, "%s\n", service->name);
+                        for(Event_T event = service->eventlist; event; event = event->next)
+                        {
+                        	fprintf(file2, SERVICEEVENT_REPR_FMT,
+                        		event->id, 
+                        		event->collected.tv_sec, 
+                        		event->collected.tv_usec,
+                        		event->mode,
+                        		event->state,
+                        		event->state_changed ? true : false,
+                        		event->state_map,
+                        		event->count,
+	                        	event->action->uniqid.id,
+	                        	event->action->uniqid.event_type_mask,
+	                        	event->action->uniqid.hash
+                        	);
+                        }
+                }
+                if (fflush(file2))
+                        THROW(IOException, "Unable to flush eventstate file -- %s", STRERROR);
         }
         ELSE
         {

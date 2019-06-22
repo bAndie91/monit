@@ -95,11 +95,12 @@ extern EventTable_T Event_Table[];
  * Post a new Event
  * @param service The Service the event belongs to
  * @param id The event identification
+ * @param seauid This struct is to uniquely identify the given action (other than memory address), it contains an enumerated id (Service_EventAction_UniqId_Type) and an optional MD5 hash (all zero if unused). These 2 number plus the Event_Type (given in id parameter) construct the action's unique id triplet.
  * @param state The event state
  * @param action Description of the event action
  * @param s Optional message describing the event
  */
-void Event_post(Service_T service, long id, State_Type state, EventAction_T action, char *s, ...) __attribute__((format (printf, 5, 6)));
+void Event_post(Service_T service, long id, Service_EventAction_UniqId_T, State_Type state, EventAction_T action, char *s, ...) __attribute__((format (printf, 6, 7)));
 
 
 /**

@@ -131,6 +131,8 @@ typedef enum {
 #include "system/Link.h"
 #include "thread/Thread.h"
 
+// libfnv
+#include "fnv.h"
 
 #define MONITRC            "monitrc"
 #define TIMEFORMAT         "%Z %b %e %T"
@@ -249,6 +251,35 @@ typedef enum {
         Action_Start,
         Action_Monitor
 } __attribute__((__packed__)) Action_Type;
+
+
+typedef enum {
+	Service_EventAction_UniqId_Empty = 0,
+	Service_EventAction_UniqId_Action,
+	Service_EventAction_UniqId_ActionRate,
+	Service_EventAction_UniqId_BandwidthUpByte,
+	Service_EventAction_UniqId_BandwidthUpPckt,
+	Service_EventAction_UniqId_BandwidthDnByte,
+	Service_EventAction_UniqId_BandwidthDnPckt,
+	Service_EventAction_UniqId_Checksum,
+	Service_EventAction_UniqId_Euid,
+	Service_EventAction_UniqId_Exec,
+	Service_EventAction_UniqId_Fsflag,
+	Service_EventAction_UniqId_FsResource,
+	Service_EventAction_UniqId_Icmp,
+	Service_EventAction_UniqId_LinkStatus,
+	Service_EventAction_UniqId_LinkSpeed,
+	Service_EventAction_UniqId_LinkSaturation,
+	Service_EventAction_UniqId_Match,
+	Service_EventAction_UniqId_Port,
+	Service_EventAction_UniqId_Resource,
+	Service_EventAction_UniqId_Size,
+	Service_EventAction_UniqId_Start,
+	Service_EventAction_UniqId_Status,
+	Service_EventAction_UniqId_Stop,
+	Service_EventAction_UniqId_Timestamp,
+	Service_EventAction_UniqId_Uptime
+} __attribute__((__packed__)) Service_EventAction_UniqId_Type;
 
 
 typedef enum {
@@ -456,10 +487,23 @@ typedef struct myaction {
 } *Action_T;
 
 
+typedef struct myserviceeventactionuniqidtriplet {
+        Service_EventAction_UniqId_Type id;
+        /* Event_Type */ long event_type_mask;
+        Fnv64_t hash;
+} Service_EventAction_UniqId_triplet_T;
+
+typedef struct myserviceeventactionuniqid {
+        Service_EventAction_UniqId_Type id;
+        Fnv64_t hash;
+} Service_EventAction_UniqId_T;  /* used as Event_post() argument */
+
+
 /** Defines event's up and down actions */
 typedef struct myeventaction {
         Action_T  failed;                  /**< Action in the case of failure down */
         Action_T  succeeded;                    /**< Action in the case of failure up */
+        Service_EventAction_UniqId_triplet_T uniqid;
 } *EventAction_T;
 
 
@@ -480,6 +524,7 @@ typedef struct myurl {
 typedef struct myregexpmatch {
         Operator_Type operator;         /**< Response content comparison operator */
         regex_t *regex;                   /* regex used to test the response body */
+        char* regex_str;                      /* original uncompiled regex string */
         
         struct myregexpmatch *next;
 } *RegexpMatch_T;
@@ -577,6 +622,7 @@ typedef struct Protocol_T {
 typedef struct mygenericproto {
         char *send;                           /* string to send, or NULL if expect */
         regex_t *expect;                  /* regex code to expect, or NULL if send */
+        char* expect_regex_str;                  /* original regexp string or NULL */
         /** For internal use */
         struct mygenericproto *next;
 } *Generic_T;
@@ -1137,6 +1183,7 @@ struct myrun {
                 char *pid;                              /**< This programs pidfile */
                 char *id;                       /**< The file with unique monit id */
                 char *state;            /**< The file with the saved runtime state */
+                char *eventstate;      /**< The file with the saved runtime events */
         } files;
         char *mygroup;                              /**< Group Name of the Service */
         MD_T id;                                              /**< Unique monit id */

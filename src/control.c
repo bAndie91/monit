@@ -86,6 +86,8 @@ typedef enum {
 /* ----------------------------------------------------------------- Private */
 
 
+static Service_EventAction_UniqId_T seauid_control_exec = {Service_EventAction_UniqId_Exec, 0LL};
+
 static int _getOutput(InputStream_T in, char *buf, int buflen) {
         InputStream_setTimeout(in, 0);
         return InputStream_readBytes(in, buf, buflen - 1);
@@ -245,18 +247,18 @@ static boolean_t _doStart(Service_T s) {
                                 int64_t timeout = s->start->timeout * USEC_PER_MSEC;
                                 int status = _commandExecute(s, s->start, msg, sizeof(msg), &timeout);
                                 if (status < 0 || (s->type == Service_Process && _waitProcessStart(s, &timeout) != Process_Started)) {
-                                        Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start (exit status %d) -- %s", status, *msg ? msg : "no output");
+                                        Event_post(s, Event_Exec, seauid_control_exec, State_Failed, s->action_EXEC, "failed to start (exit status %d) -- %s", status, *msg ? msg : "no output");
                                         rv = false;
                                 } else {
-                                        Event_post(s, Event_Exec, State_Succeeded, s->action_EXEC, "started");
+                                        Event_post(s, Event_Exec, seauid_control_exec, State_Succeeded, s->action_EXEC, "started");
                                 }
                         }
                 } else {
                         LogDebug("'%s' start method not defined\n", s->name);
-                        Event_post(s, Event_Exec, State_Succeeded, s->action_EXEC, "monitoring enabled");
+                        Event_post(s, Event_Exec, seauid_control_exec, State_Succeeded, s->action_EXEC, "monitoring enabled");
                 }
         } else {
-                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start -- could not start required services: '%s'", StringBuffer_toString(sb));
+                Event_post(s, Event_Exec, seauid_control_exec, State_Failed, s->action_EXEC, "failed to start -- could not start required services: '%s'", StringBuffer_toString(sb));
                 s->doaction = Action_Start; // Retry the start next cycle
         }
         Util_monitorSet(s);
@@ -273,9 +275,9 @@ static int _executeStop(Service_T s, char *msg, int msglen, int64_t *timeout) {
 
 static void _evaluateStop(Service_T s, boolean_t succeeded, int exitStatus, char *msg) {
         if (succeeded)
-                Event_post(s, Event_Exec, State_Succeeded, s->action_EXEC, "stopped");
+                Event_post(s, Event_Exec, seauid_control_exec, State_Succeeded, s->action_EXEC, "stopped");
         else
-                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to stop (exit status %d) -- %s", exitStatus, *msg ? msg : "no output");
+                Event_post(s, Event_Exec, seauid_control_exec, State_Failed, s->action_EXEC, "failed to stop (exit status %d) -- %s", exitStatus, *msg ? msg : "no output");
 }
 
 
@@ -334,9 +336,9 @@ static boolean_t _doRestart(Service_T s) {
                 int status = _commandExecute(s, s->restart, msg, sizeof(msg), &timeout);
                 if (status < 0 || (s->type == Service_Process && _waitProcessStart(s, &timeout) != Process_Started)) {
                         rv = false;
-                        Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to restart (exit status %d) -- %s", status, msg);
+                        Event_post(s, Event_Exec, seauid_control_exec, State_Failed, s->action_EXEC, "failed to restart (exit status %d) -- %s", status, msg);
                 } else {
-                        Event_post(s, Event_Exec, State_Succeeded, s->action_EXEC, "restarted");
+                        Event_post(s, Event_Exec, seauid_control_exec, State_Succeeded, s->action_EXEC, "restarted");
                 }
         } else {
                 LogDebug("'%s' restart skipped -- method not defined\n", s->name);

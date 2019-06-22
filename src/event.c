@@ -379,6 +379,48 @@ void Event_post_postrun(Service_T service, Event_T e, State_Type state)
         _handleEvent(service, e);
 }
 
+boolean_t Event_identical_actions(Action_T a1, Action_T a2) {
+	if(!a1 || !a2) return false;
+	if(a1->id != a2->id) return false;
+	/* don't requisite count, cycles, and repeat fields to match */
+	if(a1->exec == NULL && a2->exec == NULL) return true;
+	if(a1->exec == NULL && a2->exec != NULL) return false;
+	if(a1->exec != NULL && a2->exec == NULL) return false;
+	/* check whether all the command arguments in exec field are match */
+	if(a1->exec->length != a2->exec->length) return false;
+	unsigned int i;
+	for(i = 0; i < a1->exec->length; i++)
+	{
+		if(strcmp(a1->exec->arg[i], a2->exec->arg[i]) != 0) return false;
+	}
+	if(a1->exec->has_uid != a2->exec->has_uid) return false;
+	if(a1->exec->has_gid != a2->exec->has_gid) return false;
+	if(a1->exec->uid != a2->exec->uid) return false;
+	if(a1->exec->gid != a2->exec->gid) return false;
+	return true;
+}
+
+boolean_t Event_identical_action_uniqids(EventAction_T ea1, EventAction_T ea2) {
+	Service_EventAction_UniqId_triplet_T *seauid1, *seauid2;
+	seauid1 = &ea1->uniqid;
+	seauid2 = &ea2->uniqid;
+	if(seauid1->id != seauid2->id) return false;
+	if(seauid1->id == Service_EventAction_UniqId_Empty) {
+		if(seauid1->event_type_mask != seauid2->event_type_mask) return false;
+	}
+	if(seauid1->hash != seauid2->hash) return false;
+	// TODO idea: compare eventaction deeply only if action->hash is 0
+	//if(Event_identical_actions(ea1->failed, ea2->failed) && Event_identical_actions(ea1->succeeded, ea2->succeeded)) return true;
+	return true;
+}
+
+boolean_t Event_identical_event_actions(EventAction_T ea1, EventAction_T ea2) {
+	if(!ea1 || !ea2) return false;
+	if(ea1 == ea2) return true;
+	if(Event_identical_action_uniqids(ea1, ea2)) return true;
+	return false;
+}
+
 /**
  * Post a new Event
  * @param service The Service the event belongs to
@@ -387,12 +429,18 @@ void Event_post_postrun(Service_T service, Event_T e, State_Type state)
  * @param action Description of the event action
  * @param s Optional message describing the event
  */
-void Event_post(Service_T service, long id, State_Type state, EventAction_T action, char *s, ...) {
+void Event_post(Service_T service, long id, Service_EventAction_UniqId_T service_eventaction_uniqid, State_Type state, EventAction_T action, char *s, ...) {
         ASSERT(service);
         ASSERT(action);
         ASSERT(s);
         ASSERT(state == State_Failed || state == State_Succeeded || state == State_Changed || state == State_ChangedNot);
-
+        
+        { /* Construct unique ID for this EventAction */
+        	action->uniqid.id = service_eventaction_uniqid.id;
+        	action->uniqid.event_type_mask = id;
+        	action->uniqid.hash = service_eventaction_uniqid.hash;
+        }
+        
         va_list ap;
         va_start(ap, s);
         char *message = Str_vcat(s, ap);
@@ -401,7 +449,7 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
         Event_T e = service->eventlist;
         boolean_t event_found = false;
         while (e) {
-                if (e->action == action && (id & e->id)) {
+                if (Event_identical_event_actions(e->action, action) && (id & e->id)) {
                         event_found = true;
                         gettimeofday(&e->collected, NULL);
 
@@ -413,6 +461,12 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                         FREE(e->message);
                         e->message = Str_dup(message);
 
+                        /* Copy current EventAction's 'failed' and 'succeeded' Actions,
+                           because restored events have empty action property (only uniqid 
+                           triplet is restored). */
+                        if(!e->action->failed) e->action->failed = action->failed;
+                        if(!e->action->succeeded) e->action->succeeded = action->succeeded;
+                        
                         Event_post_postrun(service, e, state);
                 }
                 e = e->next;
