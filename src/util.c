@@ -2126,7 +2126,7 @@ Fnv64_t Util_EventAction_Hash_FsResource(Filesystem_T o) {
 	return Util_Hash_Format(4, Util_Hash_Format_Type_u, o->resource, Util_Hash_Format_Type_u, o->operator, Util_Hash_Format_Type_lld, o->limit_absolute, Util_Hash_Format_Type_f, o->limit_percent);
 }
 Fnv64_t Util_EventAction_Hash_Icmp(Icmp_T o) {
-	return Util_Hash_Format(8, Util_Hash_Format_Type_d, o->type, Util_Hash_Format_Type_d, o->size, Util_Hash_Format_Type_d, o->count, Util_Hash_Format_Type_d, o->timeout, Util_Hash_Format_Type_u, o->is_available, Util_Hash_Format_Type_u, o->family, Util_Hash_Format_Type_f, o->response, Util_Hash_Format_Type_s, o->outgoing.ip);
+	return Util_Hash_Format(8, Util_Hash_Format_Type_d, o->type, Util_Hash_Format_Type_d, o->size, Util_Hash_Format_Type_d, o->count, Util_Hash_Format_Type_d, o->timeout, Util_Hash_Format_Type_u, o->is_available, Util_Hash_Format_Type_u, o->family, Util_Hash_Format_Type_s, o->outgoing.ip);
 }
 Fnv64_t Util_EventAction_Hash_LinkSpeed(LinkSpeed_T o) {
 	return Util_Hash_Format(2, Util_Hash_Format_Type_d, o->duplex, Util_Hash_Format_Type_lld, o->speed);
@@ -2145,96 +2145,119 @@ Fnv64_t Util_EventAction_Hash_Port(Port_T o) {
 	
 	hash = FNV1A_64_INIT;
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->hostname);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.unix.pathname);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->target.net.ssl.flags);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.verify);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.allowSelfSigned);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.version);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->target.net.ssl.checksumType);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.minimumValidDays);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.checksum);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.clientpemfile);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.CACertificateFile);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.CACertificatePath);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.port);
+	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->family);
+	if(o->family == Socket_Unix)
+	{
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.unix.pathname);
+	} else {
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->target.net.ssl.flags);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.verify);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.allowSelfSigned);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.version);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->target.net.ssl.checksumType);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.ssl.minimumValidDays);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.checksum);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.clientpemfile);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.CACertificateFile);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->target.net.ssl.CACertificatePath);
+		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->target.net.port);
+	}
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->outgoing.ip);
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->timeout);
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->retry);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_f, &o->response);
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->type);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->family);
 	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->is_available);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.username);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.password);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.path);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.loglimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.closelimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.dnslimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.keepalivelimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.replylimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.requestlimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.startlimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.waitlimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.gracefullimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.cleanuplimit);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.loglimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.closelimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.dnslimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.keepalivelimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.replylimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.requestlimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.startlimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.waitlimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.gracefullimitOP);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.cleanuplimitOP);
 	
-	/* append the number of send/expect entries */
-	counter = 0;
-	for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) counter++;
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &counter);
-	/* append all the send/expect entries in order */
-	for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) {
-		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &g->send);
-		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &g->expect_regex_str);
-	}
-	
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.hashtype);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.operator);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.http.status);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.username);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.password);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.request);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.checksum);
-	
-	if(o->parameters.http.headers) {
-		/* append the number of headers */
-		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.http.headers->length);
-		/* append each headers 1-by-1 */
-		for(list_t h = o->parameters.http.headers->head; h; h = h->next) {
-			fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &h->e);
-		}
-	} else {
-		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &(unsigned int){0});
-	}
-	
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.version.major);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.version.minor);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.content_length.operator);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_lld, &o->parameters.http.content_length.length);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_zu, &o->parameters.http.checksum_data_length);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.mysql.username);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.mysql.password);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.radius.secret);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.sip.maxforward);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.sip.target);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.smtp.username);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.smtp.password);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.websocket.version);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.host);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.origin);
-	fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.request);
 	if(o->protocol) {
 		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->protocol->name);
+		
+		switch(Protocol_which(o->protocol)) {
+			case Protocol_DEFAULT:
+			break;
+			case Protocol_APACHESTATUS:
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.username);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.password);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.apachestatus.path);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.loglimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.closelimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.dnslimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.keepalivelimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.replylimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.requestlimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.startlimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.waitlimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.gracefullimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.apachestatus.cleanuplimit);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.loglimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.closelimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.dnslimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.keepalivelimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.replylimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.requestlimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.startlimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.waitlimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.gracefullimitOP);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.apachestatus.cleanuplimitOP);
+			break;
+			case Protocol_GENERIC:
+				/* append the number of send/expect entries */
+				counter = 0;
+				for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) counter++;
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &counter);
+				/* append all the send/expect entries in order */
+				for(Generic_T g = o->parameters.generic.sendexpect; g; g = g->next) {
+					fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &g->send);
+					fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &g->expect_regex_str);
+				}
+			break;
+			case Protocol_HTTP:
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.hashtype);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.operator);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.http.status);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.username);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.password);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.request);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.http.checksum);
+				
+				if(o->parameters.http.headers) {
+					/* append the number of headers */
+					fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.http.headers->length);
+					/* append each headers 1-by-1 */
+					for(list_t h = o->parameters.http.headers->head; h; h = h->next) {
+						fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &h->e);
+					}
+				} else {
+					fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &(unsigned int){0});
+				}
+				
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.version.major);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.version.minor);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_u, &o->parameters.http.content_length.operator);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_lld, &o->parameters.http.content_length.length);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_zu, &o->parameters.http.checksum_data_length);
+			break;
+			case Protocol_MYSQL:
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.mysql.username);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.mysql.password);
+			break;
+			case Protocol_RADIUS:
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.radius.secret);
+			break;
+			case Protocol_SIP:
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.sip.maxforward);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.sip.target);
+			break;
+			case Protocol_SMTP:
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.smtp.username);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.smtp.password);
+			break;
+			case Protocol_WEBSOCKET:
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_d, &o->parameters.websocket.version);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.host);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.origin);
+				fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &o->parameters.websocket.request);
+			break;
+		}
 	} else {
 		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &(char*){""} /* 1 + 0 comma */);
 	}
