@@ -557,24 +557,26 @@ void State_save() {
                 if (fseek(file2, 0L, SEEK_SET) == -1)
                         THROW(IOException, "Unable to seek eventstate file");
                 for (Service_T service = servicelist; service; service = service->next) {
-                        // TODO: write error handling
-                        fprintf(file2, "%s\n", service->name);
-                        for(Event_T event = service->eventlist; event; event = event->next)
-                        {
-                        	fprintf(file2, SERVICEEVENT_REPR_FMT,
-                        		event->id, 
-                        		event->collected.tv_sec, 
-                        		event->collected.tv_usec,
-                        		event->mode,
-                        		event->state,
-                        		event->state_changed ? true : false,
-                        		event->state_map,
-                        		event->count,
-	                        	event->action->uniqid.id,
-	                        	event->action->uniqid.event_type_mask,
-	                        	event->action->uniqid.hash
-                        	);
-                        }
+                        if(service->eventlist) {
+	                        // TODO: write error handling
+    	                    fprintf(file2, "%s\n", service->name);
+        	                for(Event_T event = service->eventlist; event; event = event->next)
+            	            {
+                	        	fprintf(file2, SERVICEEVENT_REPR_FMT,
+                    	    		event->id, 
+                        			event->collected.tv_sec, 
+                        			event->collected.tv_usec,
+                        			event->mode,
+	                        		event->state,
+    	                    		event->state_changed ? true : false,
+        	                		event->state_map,
+            	            		event->count,
+	            	            	event->action->uniqid.id,
+	                	        	event->action->uniqid.event_type_mask,
+	                    	    	event->action->uniqid.hash
+                        		);
+	                        }
+	                    }
                 }
                 if (fflush(file2))
                         THROW(IOException, "Unable to flush eventstate file -- %s", STRERROR);
