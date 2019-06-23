@@ -300,6 +300,7 @@ static void _gc_request(Request_T *r) {
         	{
 	        	regfree(match->regex);
 	        	FREE(match->regex);
+	        	FREE(match->regex_str);
 	        }
 	        match_next = match->next;
 	        FREE(match);
@@ -618,6 +619,7 @@ static void _gcgeneric(Generic_T *g) {
         if ((*g)->expect != NULL)
                 regfree((*g)->expect);
         FREE((*g)->expect);
+        FREE((*g)->expect_regex_str);
         FREE(*g);
 
 }
