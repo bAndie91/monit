@@ -2021,18 +2021,6 @@ typedef enum {
 	Util_Hash_Format_Type_var
 } __attribute__((__packed__)) Util_Hash_Format_Type;
 
-void fnv1a64_append_comma_multi_type_varsize(Fnv64_t *hval, void* data, unsigned char storage_size)
-{
-	ASSERT(storage_size == 1 || storage_size == 2 || storage_size == 4 || storage_size == 8);
-	
-	switch(storage_size) {
-		case 1: fnv1a64_append_comma_multi_type(hval, Util_Hash_Format_Type_c, data); break;
-		case 2: fnv1a64_append_comma_multi_type(hval, Util_Hash_Format_Type_hd, data); break;
-		case 4: fnv1a64_append_comma_multi_type(hval, Util_Hash_Format_Type_d, data); break;
-		case 8: fnv1a64_append_comma_multi_type(hval, Util_Hash_Format_Type_lld, data); break;
-	}
-}
-
 void fnv1a64_append_comma_multi_type(Fnv64_t *hval, Util_Hash_Format_Type fmtt, void* data)
 {
 	char buf[STRLEN];
@@ -2071,6 +2059,9 @@ void fnv1a64_append_comma_multi_type(Fnv64_t *hval, Util_Hash_Format_Type fmtt, 
 		case Util_Hash_Format_Type_hd:
 			snprintf(buf, STRLEN - 1, "%hd", *(short*)data);
 			break;
+		case Util_Hash_Format_Type_var:
+			/* not reached */
+			break;
 	}
 	
 	*hval = fnv_64a_str(",", *hval);
@@ -2078,11 +2069,23 @@ void fnv1a64_append_comma_multi_type(Fnv64_t *hval, Util_Hash_Format_Type fmtt, 
 	fprintf(stderr, ",%s", buf);  // DEBUG
 }
 
+void fnv1a64_append_comma_multi_type_varsize(Fnv64_t *hval, void* data, unsigned char storage_size)
+{
+	ASSERT(storage_size == 1 || storage_size == 2 || storage_size == 4 || storage_size == 8);
+	
+	switch(storage_size) {
+		case 1: fnv1a64_append_comma_multi_type(hval, Util_Hash_Format_Type_c, data); break;
+		case 2: fnv1a64_append_comma_multi_type(hval, Util_Hash_Format_Type_hd, data); break;
+		case 4: fnv1a64_append_comma_multi_type(hval, Util_Hash_Format_Type_d, data); break;
+		case 8: fnv1a64_append_comma_multi_type(hval, Util_Hash_Format_Type_lld, data); break;
+	}
+}
+
 Fnv64_t Util_Hash_Format(short elements, ...) {
 	Fnv64_t hash;
 	va_list vap;
 	Util_Hash_Format_Type fmtt;
-	unsigned char storage_size;
+	int storage_size;
 	double f;
 	long long lld;
 	unsigned long long llu;
@@ -2090,9 +2093,6 @@ Fnv64_t Util_Hash_Format(short elements, ...) {
 	int d;
 	unsigned int u;
 	size_t zu;
-	boolean_t b;
-	short h;
-	char c;
 	
 	hash = FNV1A_64_INIT;
 	va_start(vap, elements);
@@ -2101,17 +2101,17 @@ Fnv64_t Util_Hash_Format(short elements, ...) {
 		fmtt = va_arg(vap, int);
 		switch(fmtt) {
 			case Util_Hash_Format_Type_var:
-				storage_size = va_arg(vap, unsigned char);
+				storage_size = va_arg(vap, int);
 				ASSERT(storage_size == 1 || storage_size == 2 || storage_size == 4 || storage_size == 8);
 				
 				switch(storage_size) {
 					case 1:
-						c = va_arg(vap, char);
-						fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_c, &c);
+						d = va_arg(vap, int);  /* vararg promotes char to int */
+						fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_c, &d);
 						break;
 					case 2:
-						h = va_arg(vap, short);
-						fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_hd, &h);
+						d = va_arg(vap, int);  /* vararg promotes short to int */
+						fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_hd, &d);
 						break;
 					case 4:
 						d = va_arg(vap, int);
@@ -2140,10 +2140,6 @@ Fnv64_t Util_Hash_Format(short elements, ...) {
 				s = va_arg(vap, char*);
 				fnv1a64_append_comma_multi_type(&hash, fmtt, &s);
 				break;
-			case Util_Hash_Format_Type_d:
-				d = va_arg(vap, int);
-				fnv1a64_append_comma_multi_type(&hash, fmtt, &d);
-				break;
 			case Util_Hash_Format_Type_u:
 				u = va_arg(vap, unsigned int);
 				fnv1a64_append_comma_multi_type(&hash, fmtt, &u);
@@ -2153,8 +2149,16 @@ Fnv64_t Util_Hash_Format(short elements, ...) {
 				fnv1a64_append_comma_multi_type(&hash, fmtt, &zu);
 				break;
 			case Util_Hash_Format_Type_b:
-				b = va_arg(vap, int);
-				fnv1a64_append_comma_multi_type(&hash, fmtt, &b);
+				/* overflow */
+			case Util_Hash_Format_Type_c:
+				/* vararg promotes char to int */
+				/* overflow */
+			case Util_Hash_Format_Type_hd:
+				/* vararg promotes short to int */
+				/* overflow */
+			case Util_Hash_Format_Type_d:
+				d = va_arg(vap, int);
+				fnv1a64_append_comma_multi_type(&hash, fmtt, &d);
 				break;
 		}
 	}
