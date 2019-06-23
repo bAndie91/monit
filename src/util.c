@@ -2066,7 +2066,6 @@ void fnv1a64_append_comma_multi_type(Fnv64_t *hval, Util_Hash_Format_Type fmtt, 
 	
 	*hval = fnv_64a_str(",", *hval);
 	*hval = fnv_64a_str(buf, *hval);
-	fprintf(stderr, ",%s", buf);  // DEBUG
 }
 
 void fnv1a64_append_comma_multi_type_varsize(Fnv64_t *hval, void* data, unsigned char storage_size)
@@ -2163,7 +2162,6 @@ Fnv64_t Util_Hash_Format(short elements, ...) {
 		}
 	}
 	va_end(vap);
-	fprintf(stderr, "\n");  // DEBUG
 	return hash;
 }
 Fnv64_t Util_EventAction_Hash_ActionRate(ActionRate_T o) {
@@ -2346,7 +2344,6 @@ Fnv64_t Util_EventAction_Hash_Port(Port_T o) {
 		fnv1a64_append_comma_multi_type(&hash, Util_Hash_Format_Type_s, &(char*){",,,,,,,,,0"} /* 1 + 8 commas + ",0" */);
 	}
 	
-	fprintf(stderr, "\n");  // DEBUG
 	return hash;
 }
 Fnv64_t Util_EventAction_Hash_Resource(Resource_T o) {
