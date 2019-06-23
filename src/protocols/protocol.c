@@ -83,3 +83,13 @@ Protocol_T Protocol_get(Protocol_Type type) {
 }
 
 
+Protocol_Type Protocol_which(Protocol_T protocol) {
+        ASSERT(protocol);
+        for(int x=0; x<sizeof(protocols)/sizeof(protocols[0]); x++) {
+        	// if(strcmp(protocols[x].name, protocol_name)==0) return x;
+        	if(protocols[x]->check == protocol->check) return x;
+        }
+        return -1;
+}
+
+

@@ -105,5 +105,9 @@ void check_websocket(Socket_T);
  */
 Protocol_T Protocol_get(Protocol_Type type);
 
+/*
+ * Returns a protocol type for the given protocol object
+ */
+Protocol_Type Protocol_which(Protocol_T);
 
 #endif
