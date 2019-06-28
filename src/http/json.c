@@ -48,6 +48,10 @@ static void _escapeJSON(StringBuffer_T B, const char *buf) {
                         StringBuffer_append(B, "\\\\");
                 else if (buf[i] == '"')
                         StringBuffer_append(B, "\\\"");
+                else if (buf[i] == '\n')
+                        StringBuffer_append(B, "\\n");
+                else if (buf[i] < 0x20)
+                        StringBuffer_append(B, "\\u00%02x", buf[i]);
                 else
                         StringBuffer_append(B, "%c", buf[i]);
         }
