@@ -2,6 +2,14 @@
 
            This file summarizes changes made since 5.0
 
+
+Version 5.21.0
+
+Fixed: Issue #547: If the file service is unmonitored or stopped, the read position in the content test
+is reset to the end of the file if monitoring is enabled again, so the content which is added while the
+service is not monitored will be ignored.
+
+
 Version 5.20.0
 
 New: Issue #448: Added global "set onreboot <start | nostart | laststate>" statement which allows
