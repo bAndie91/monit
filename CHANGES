@@ -3,6 +3,72 @@
            This file summarizes changes made since 5.0
 
 
+Version 5.25.2
+
+Fixed: The port connection test may be skipped on some 32-bit platforms.
+
+
+Version 5.25.1
+
+Fixed: Issue #688: Linux: Monit may crash if the monitored process stopped (5.25.0 regression).
+
+
+Version 5.25.0
+
+New: Issue #507: Linux: Implement support for monitoring Linux Security Modules (LSM) labels for processes. Thanks to Christian Goettsche.
+Example for SELinux:
+   check process ntpd matching "ntpd"
+        if failed security attribute "system_u:system_r:ntpd_t:s0" then alert
+Example for AppArmor:
+   check process ntpd matching "ntpd"
+        if failed security attribute "/usr/sbin/ntpd (enforce)" then alert
+
+Fixed: Issue #657: Fix the "total cpu usage" test for processes with children.
+
+Fixed: Issue #672: FreeBSD: Support I/O statistics for raid and encrypted partitions.
+
+Fixed: Issue #676: Process CPU usage is reported always as 0.0% in the first cycle after process start
+
+Fixed: Issue #680: Port test: If the protocol check failed, the SSL certificate expiration test returned
+false positive error.
+
+Fixed: Issue #685: SIP protocol test: maxforward 0 doesn't work
+
+Fixed: MacOS: Support disk I/O monitoring for APFS
+
+Fixed: MacOS: Fix platform name and version for MacOS High Sierra.
+
+
+Version 5.24.0
+
+New: Issue #175: Added support to specify the ownership and mode of the Monit
+HTTPD unixsocket.
+
+New: Issue #652: Add support for overriding the TLS version to TLSv1.3
+if supported by the SSL library.
+
+New: Allow to disable IPv6 at compile time via configure --without-ipv6 option.
+
+Fixed: Issue #624: Make the fail2ban protocol test backward
+compatible with older protocol versions.
+
+Fixed: Issue #633: HTTP protocol test: allow to use zero status value.
+
+Fixed: Issue #634: Display check program output.
+
+Fixed: Issue #640: SSL option CACERTIFICATEPATH doesn't work.
+
+Fixed: Issue #649: Monit initialization fails if open() returns an unexpected file
+descriptor. The problem was observed when Monit was executed in STAF test environment.
+Thanks to Alan Somers for patch.
+
+Fixed: Issue #666: FreeBSD: Support statistics for filesystems, which are
+mounted via labeled device.
+
+Fixed: Enable color output for rxvt terminal.
+
+>>>>>>> 8aa7662... Fixed: The port connection test may be skipped on some 32-bit platforms
+
 Version 5.23.0
 
 Fixed: Keep the action-pending status until the action is finished.
