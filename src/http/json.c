@@ -442,7 +442,7 @@ static void json_status_service(Service_T S, StringBuffer_T B, int V) {
                                             "\"output\":\"",
                                             (long long)S->program->started,
                                             S->program->exitStatus);
-                        _escapeJSON(B, StringBuffer_toString(S->program->output));
+                        _escapeJSON(B, StringBuffer_toString(S->program->lastOutput));
                         StringBuffer_append(B,
                                             "\""
                                             "}");
