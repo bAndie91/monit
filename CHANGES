@@ -3,6 +3,11 @@
            This file summarizes changes made since 5.0
 
 
+Version 5.25.2
+
+Fixed: The port connection test may be skipped on some 32-bit platforms.
+
+
 Version 5.23.0
 
 Fixed: Keep the action-pending status until the action is finished.
