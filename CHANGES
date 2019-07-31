@@ -3,6 +3,11 @@
            This file summarizes changes made since 5.0
 
 
+Version 5.25.3
+
+Fixed: Buffer overrun vulnerability in URL decoding. Thanks to Zack Flack for report.
+
+
 Version 5.25.2
 
 Fixed: The port connection test may be skipped on some 32-bit platforms.

@@ -214,7 +214,7 @@ static char *is_str_defined(char *s) {
 /**
  * Convert a hex char to a char
  */
-static char x2c(char *hex) {
+static char _x2c(char *hex) {
         register char digit;
         digit = ((hex[0] >= 'A') ? ((hex[0] & 0xdf) - 'A')+10 : (hex[0] - '0'));
         digit *= 16;
@@ -515,7 +515,7 @@ void Util_handleEscapes(char *buf) {
                                                          */
                                                         *(buf + insertpos) = *(buf+editpos);
                                                 } else {
-                                                        *(buf + insertpos) = x2c(&buf[editpos + 3]);
+                                                        *(buf + insertpos) = _x2c(&buf[editpos + 3]);
                                                         editpos += 4;
                                                 }
                                         }
@@ -551,7 +551,7 @@ int Util_handle0Escapes(char *buf) {
                         switch (*(buf + editpos + 1)) {
                                 case '0':
                                         if (*(buf + editpos + 2) == 'x') {
-                                                *(buf + insertpos) = x2c(&buf[editpos+3]);
+                                                *(buf + insertpos) = _x2c(&buf[editpos+3]);
                                                 editpos += 4;
                                         }
                                         break;
@@ -1502,13 +1502,15 @@ char *Util_urlDecode(char *url) {
         if (url && *url) {
                 register int x, y;
                 for (x = 0, y = 0; url[y]; x++, y++) {
-                        if ((url[x] = url[y]) == '+')
+                        if (url[y] == '+') {
                                 url[x] = ' ';
-                        else if (url[x] == '%') {
-                                if (! (url[x + 1] && url[x + 2]))
+                        } else if (url[y] == '%') {
+                                if (! url[y + 1] || ! url[y + 2])
                                         break;
-                                url[x] = x2c(url + y + 1);
+                                url[x] = _x2c(url + y + 1);
                                 y += 2;
+                        } else {
+                                url[x] = url[y];
                         }
                 }
                 url[x] = 0;
