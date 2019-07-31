@@ -9,6 +9,9 @@ Fixed: Buffer overrun vulnerability in URL decoding. Thanks to Zack Flack for re
 
 Fixed: Issue #634: Check program output.
 
+Fixed: Issue #759: The "stop" action for "check program" has no effect if the "every" statement
+is used to skip monitoring in some cycles.
+
 
 Version 5.25.2
 
