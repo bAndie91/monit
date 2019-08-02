@@ -1850,6 +1850,10 @@ exist           : IF NOT EXIST rate1 THEN action1 recovery {
                     addeventaction(&(nonexistset).action, $<number>6, $<number>7);
                     addnonexist(&nonexistset);
                   }
+                | IF EXIST rate1 THEN action1 recovery {
+                    addeventaction(&(nonexistset).action, $<number>5, $<number>6);
+                    addnonexist(&nonexistset);
+                  }
                 ;
 
 

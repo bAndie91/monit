@@ -60,6 +60,7 @@ typedef enum {
         Event_ByteOut    = 0x8000000,
         Event_PacketIn   = 0x10000000,
         Event_PacketOut  = 0x20000000,
+        Event_Exist      = 0x40000000,
         Event_All        = 0x7FFFFFFF
 } Event_Type;
 

@@ -971,6 +971,14 @@ typedef struct mynonexist {
 } *Nonexist_T;
 
 
+typedef struct myexist {
+        EventAction_T action;  /**< Description of the action upon event occurence */
+
+        /** For internal use */
+        struct myexist *next;
+} *Exist_T;
+
+
 /** Defines filesystem configuration */
 typedef struct myfilesystem {
         Resource_Type resource;               /**< Whether to check inode or space */
@@ -1102,6 +1110,7 @@ typedef struct myservice {
         Status_T    statuslist;           /**< Program execution status check list */
         Fsflag_T    fsflaglist;           /**< Action upon filesystem flags change */
         Nonexist_T  nonexistlist;  /**< Action upon test subject existence failure */
+        Exist_T     existlist;                  /**< Actions if test subject exist */
         Uid_T       uid;                                            /**< Uid check */
         Uid_T       euid;                                 /**< Effective Uid check */
         Gid_T       gid;                                            /**< Gid check */
