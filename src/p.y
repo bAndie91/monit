@@ -180,6 +180,7 @@ static struct mypid pidset;
 static struct mypid ppidset;
 static struct myfsflag fsflagset;
 static struct mynonexist nonexistset;
+static struct myexist existset;
 static struct mystatus statusset;
 static struct myperm permset;
 static struct mysize sizeset;
@@ -234,6 +235,7 @@ static void  addpid(Pid_T);
 static void  addppid(Pid_T);
 static void  addfsflag(Fsflag_T);
 static void  addnonexist(Nonexist_T);
+static void  addexist(Exist_T);
 static void  addlinkstatus(Service_T, LinkStatus_T);
 static void  addlinkspeed(Service_T, LinkSpeed_T);
 static void  addlinksaturation(Service_T, LinkSaturation_T);
@@ -280,6 +282,7 @@ static void  reset_pidset();
 static void  reset_ppidset();
 static void  reset_fsflagset();
 static void  reset_nonexistset();
+static void  reset_existset();
 static void  reset_linkstatusset();
 static void  reset_linkspeedset();
 static void  reset_linksaturationset();
@@ -1851,8 +1854,8 @@ exist           : IF NOT EXIST rate1 THEN action1 recovery {
                     addnonexist(&nonexistset);
                   }
                 | IF EXIST rate1 THEN action1 recovery {
-                    addeventaction(&(nonexistset).action, $<number>5, $<number>6);
-                    addnonexist(&nonexistset);
+                        addeventaction(&(existset).action, $<number>5, $<number>6);
+                        addexist(&existset);
                   }
                 ;
 
@@ -2004,6 +2007,7 @@ eventoption     : ACTION          { mailset.events |= Event_Action; }
                 | CONTENT         { mailset.events |= Event_Content; }
                 | DATA            { mailset.events |= Event_Data; }
                 | EXEC            { mailset.events |= Event_Exec; }
+                | EXIST           { mailset.events |= Event_Exist; }
                 | FSFLAG          { mailset.events |= Event_Fsflag; }
                 | GID             { mailset.events |= Event_Gid; }
                 | ICMP            { mailset.events |= Event_Icmp; }
@@ -3136,6 +3140,11 @@ static void addservice(Service_T s) {
                         }
                         break;
                 case Service_Filesystem:
+                        if (! s->nonexistlist && ! s->existlist) {
+                                // Add non-existence test if not defined
+                                addeventaction(&(nonexistset).action, Action_Restart, Action_Alert);
+                                addnonexist(&nonexistset);
+                        }
                         if (! s->fsflaglist) {
                                 // Add filesystem flags change test if not defined
                                 addeventaction(&(fsflagset).action, Action_Alert, Action_Ignored);
@@ -3146,7 +3155,7 @@ static void addservice(Service_T s) {
                 case Service_Fifo:
                 case Service_File:
                 case Service_Process:
-                        if (! s->nonexistlist) {
+                        if (! s->nonexistlist && ! s->existlist) {
                                 // Add existence test if not defined
                                 addeventaction(&(nonexistset).action, Action_Restart, Action_Alert);
                                 addnonexist(&nonexistset);
@@ -3505,6 +3514,17 @@ static void addnonexist(Nonexist_T ff) {
         current->nonexistlist = f;
 
         reset_nonexistset();
+}
+
+
+static void addexist(Exist_T rule) {
+        ASSERT(rule);
+        Exist_T r;
+        NEW(r);
+        r->action = rule->action;
+        r->next = current->existlist;
+        current->existlist = r;
+        reset_existset();
 }
 
 
@@ -4579,6 +4599,11 @@ static void reset_fsflagset() {
  */
 static void reset_nonexistset() {
         nonexistset.action = NULL;
+}
+
+
+static void reset_existset() {
+        existset.action = NULL;
 }
 
 

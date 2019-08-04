@@ -31,6 +31,12 @@ error.
 
 Version 5.21.0
 
+New: Extended the existence test, to allow to check that the object doesn't exist (for example
+the process is stopped). Note: this test is available for process, file, filesystem, fifo and
+directory checks only (same as non-existence test). Example:
+    check process thisShouldNotRun matching "FooBar"
+        if exists then exec "/usr/bin/pkill -9 FooBar"
+
 Fixed: Issue #547: If the file service is unmonitored or stopped, the read position in the content test
 is reset to the end of the file if monitoring is enabled again, so the content which is added while the
 service is not monitored will be ignored.

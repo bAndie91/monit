@@ -143,6 +143,7 @@ static void do_service(HttpRequest, HttpResponse, Service_T);
 static void print_alerts(HttpResponse, Mail_T);
 static void print_buttons(HttpRequest, HttpResponse, Service_T);
 static void print_service_rules_timeout(HttpResponse, Service_T);
+static void print_service_rules_nonexistence(HttpResponse, Service_T);
 static void print_service_rules_existence(HttpResponse, Service_T);
 static void print_service_rules_port(HttpResponse, Service_T);
 static void print_service_rules_socket(HttpResponse, Service_T);
@@ -1234,6 +1235,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
         _printStatus(HTML, res, s);
         // Rules
         print_service_rules_timeout(res, s);
+        print_service_rules_nonexistence(res, s);
         print_service_rules_existence(res, s);
         print_service_rules_icmp(res, s);
         print_service_rules_port(res, s);
@@ -1818,6 +1820,8 @@ static void print_alerts(HttpResponse res, Mail_T s) {
                                 StringBuffer_append(res->outputbuffer, "Data ");
                         if (IS_EVENT_SET(r->events, Event_Exec))
                                 StringBuffer_append(res->outputbuffer, "Exec ");
+                        if (IS_EVENT_SET(r->events, Event_Exist))
+                                StringBuffer_append(res->outputbuffer, "Exist ");
                         if (IS_EVENT_SET(r->events, Event_Fsflag))
                                 StringBuffer_append(res->outputbuffer, "Fsflags ");
                         if (IS_EVENT_SET(r->events, Event_Gid))
@@ -1922,10 +1926,19 @@ static void print_service_rules_timeout(HttpResponse res, Service_T s) {
 }
 
 
-static void print_service_rules_existence(HttpResponse res, Service_T s) {
+static void print_service_rules_nonexistence(HttpResponse res, Service_T s) {
         for (Nonexist_T l = s->nonexistlist; l; l = l->next) {
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Existence</td><td>");
                 Util_printRule(res->outputbuffer, l->action, "If doesn't exist");
+                StringBuffer_append(res->outputbuffer, "</td></tr>");
+        }
+}
+
+
+static void print_service_rules_existence(HttpResponse res, Service_T s) {
+        for (Exist_T l = s->existlist; l; l = l->next) {
+                StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Non-Existence</td><td>");
+                Util_printRule(res->outputbuffer, l->action, "If exist");
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
 }
@@ -2641,13 +2654,24 @@ static char *get_monitoring_status(Output_Type type, Service_T s, char *buf, int
 static char *get_service_status(Output_Type type, Service_T s, char *buf, int buflen) {
         ASSERT(s);
         ASSERT(buf);
+        char *statusnames[] = {
+                "Accessible",
+                "Accessible",
+                "Accessible",
+                "Running",
+                "Online with all services",
+                "Running",
+                "Accessible",
+                "Status ok",
+                "UP"
+        };
         if (s->monitor == Monitor_Not || s->monitor & Monitor_Init) {
                 get_monitoring_status(type, s, buf, buflen);
         } else if (s->error == 0) {
                 if (type == HTML)
-                        snprintf(buf, buflen, "<span class='green-text'>%s</span>", statusnames[s->type]);
+                        snprintf(buf, buflen, "<span class='green-text'>%s%s</span>", s->existlist ? "Not " : "", statusnames[s->type]);
                 else
-                        snprintf(buf, buflen, Color_lightGreen("%s", statusnames[s->type]));
+                        snprintf(buf, buflen, Color_lightGreen("%s%s", s->existlist ? "Not " : "", statusnames[s->type]));
         } else {
                 // In the case that the service has actualy some failure, the error bitmap will be non zero
                 char *p = buf;
