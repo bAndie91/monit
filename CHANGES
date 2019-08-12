@@ -12,6 +12,9 @@ Fixed: Issue #634: Check program output.
 Fixed: Issue #759: The "stop" action for "check program" has no effect if the "every" statement
 is used to skip monitoring in some cycles.
 
+Fixed: Issue #763: if the ping test target is a hostname which resolved to multiple IPs, Monit
+didn't try the next IP if the first one failed and returned error.
+
 
 Version 5.25.2
 
