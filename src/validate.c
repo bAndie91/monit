@@ -187,7 +187,13 @@ retry:
                 }
                 Event_post(s, event_postend, seauid, State_Failed, p->action, "%s", report);
         } else {
-                Event_post(s, Event_Checksum | Event_Content | Event_Connection, seauid, State_Succeeded, p->action, "connection succeeded to %s", Util_portDescription(p, buf, sizeof(buf)));
+                char* report_fmt = "connection succeeded to %s";
+                char* report = Util_portDescription(p, buf, sizeof(buf));
+                /* there were 3 different type of event could be generated above on State_Failed, so recover each of them here */
+                /* Event_post won't generate dangling recovery notifications anyway */
+                Event_post(s, Event_Checksum, seauid, State_Succeeded, p->action, report_fmt, report);
+                Event_post(s, Event_Content, seauid, State_Succeeded, p->action, report_fmt, report);
+                Event_post(s, Event_Connection, seauid, State_Succeeded, p->action, report_fmt, report);
         }
         return rv;
 }
