@@ -40,7 +40,9 @@ directory checks only (same as non-existence test). Example:
     check process thisShouldNotRun matching "FooBar"
         if exists then exec "/usr/bin/pkill -9 FooBar"
 
-Fixed: Issue #488: Ping test may fail.
+Fixed: Issue #488: Ping test may fail if the machine performs other ping tests with small payload.
+
+Fixed: Issue #543: Ping test may timeout prematurely on machine with heavy ICMP traffic.
 
 Fixed: Issue #547: If the file service is unmonitored or stopped, the read position in the content test
 is reset to the end of the file if monitoring is enabled again, so the content which is added while the
