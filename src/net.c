@@ -104,6 +104,13 @@
 #include <netinet/ip_icmp.h>
 #endif
 
+#ifndef ICMP_FILTER
+#define ICMP_FILTER	1
+struct icmp_filter {
+	__u32	data;
+};
+#endif
+
 #ifdef HAVE_NETINET_ICMP6_H
 #include <netinet/icmp6.h>
 #endif
@@ -303,16 +310,21 @@ int create_server_socket_unix(const char *path, int backlog, char error[STRLEN])
 }
 
 
-static void _setPingOptions(int socket, struct addrinfo *addr) {
+static void _setPingOptions(int socket, struct addrinfo *addr, int ip_ttl) {
 #ifdef HAVE_IPV6
         struct icmp6_filter filter;
         ICMP6_FILTER_SETBLOCKALL(&filter);
         ICMP6_FILTER_SETPASS(ICMP6_ECHO_REPLY, &filter);
+        ICMP6_FILTER_SETPASS(ICMP6_TIME_EXCEED_TRANSIT, &filter);  // TODO: make it conditional to that we expect TTL Exceeding or not
 #endif
-        int ttl = 255;
+        struct icmp_filter filter4;
+        filter4.data = ~((1<<ICMP_TIME_EXCEEDED)|(1<<ICMP_ECHOREPLY));
+        
+        int ttl = ip_ttl;
         switch (addr->ai_family) {
                 case AF_INET:
                         setsockopt(socket, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
+                        setsockopt(socket, SOL_RAW, ICMP_FILTER, (char*)&filter4, sizeof(struct icmp_filter));
                         break;
 #ifdef HAVE_IPV6
                 case AF_INET6:
@@ -383,7 +395,7 @@ static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *ad
 }
 
 
-static double _receivePing(const char *hostname, int socket, struct addrinfo *addr, int retry, int maxretries, int out_id, int64_t started, int timeout) {
+static double _receivePing(const char *hostname, int socket, struct addrinfo *addr, int retry, int maxretries, int out_id, int64_t started, int timeout, u_char expect_icmptype) {
         int in_len = 0, read_timeout = timeout;
         uint16_t in_id = 0, in_seq = 0;
         unsigned char *data = NULL;
@@ -411,6 +423,10 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                 struct sockaddr_storage in_addr;
                 socklen_t addrlen = sizeof(in_addr);
                 boolean_t in_addrmatch = false, in_typematch = false;
+                u_char in_type;
+                struct in_addr * in_addr_sinaddr;
+                char str_src_addr[INET6_ADDRSTRLEN];
+
                 do {
                         n = recvfrom(socket, buf, sizeof(buf), 0, (struct sockaddr *)&in_addr, &addrlen);
                 } while (n == -1 && errno == EINTR);
@@ -421,19 +437,35 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                         /* read from raw socket via recvfrom() provides messages regardless of origin, we have to check the IP and skip responses belonging to other conversations or different ICMP types (n < in_len) */
                         switch (in_addr.ss_family) {
                                 case AF_INET:
-                                        in_addrmatch = memcmp(&((struct sockaddr_in *)&in_addr)->sin_addr, &((struct sockaddr_in *)(addr->ai_addr))->sin_addr, sizeof(struct in_addr)) ? false : true;
+                                        in_addr_sinaddr = &((struct sockaddr_in *)&in_addr)->sin_addr;
+                                        inet_ntop(addr->ai_family, in_addr_sinaddr, str_src_addr, INET_ADDRSTRLEN); str_src_addr[INET_ADDRSTRLEN-1] = '\0';
+                                        
                                         in_iphdr4 = (struct ip *)buf;
                                         in_icmp4 = (struct icmp *)(buf + in_iphdr4->ip_hl * 4);
-                                        in_typematch = in_icmp4->icmp_type == ICMP_ECHOREPLY ? true : false;
+                                        in_type = in_icmp4->icmp_type;
+                                        in_typematch = in_icmp4->icmp_type == expect_icmptype ? true : false;
+                                        if (expect_icmptype == ICMP_TIME_EXCEEDED && in_typematch) {
+                                          in_iphdr4 = &(in_icmp4->icmp_dun.id_ip.idi_ip);
+                                          in_icmp4 = (struct icmp *)((unsigned char *)in_iphdr4 + in_iphdr4->ip_hl * 4);
+                                          in_addr_sinaddr = &(in_iphdr4->ip_dst);
+                                        }
+                                        in_addrmatch = memcmp(in_addr_sinaddr, &((struct sockaddr_in *)(addr->ai_addr))->sin_addr, sizeof(struct in_addr)) ? false : true;
                                         in_id = ntohs(in_icmp4->icmp_id);
                                         in_seq = ntohs(in_icmp4->icmp_seq);
                                         data = (unsigned char *)in_icmp4->icmp_data;
                                         break;
 #ifdef HAVE_IPV6
                                 case AF_INET6:
-                                        in_addrmatch = memcmp(&((struct sockaddr_in6 *)&in_addr)->sin6_addr, &((struct sockaddr_in6 *)(addr->ai_addr))->sin6_addr, sizeof(struct in6_addr)) ? false : true;
+                                        in_addr_sinaddr = &((struct sockaddr_in6 *)&in_addr)->sin6_addr;
+                                        inet_ntop(addr->ai_family, in_addr_sinaddr, str_src_addr, INET6_ADDRSTRLEN);
+                                        
+                                        in_addrmatch = memcmp(in_addr_sinaddr, &((struct sockaddr_in6 *)(addr->ai_addr))->sin6_addr, sizeof(struct in6_addr)) ? false : true;
                                         in_icmp6 = (struct icmp6_hdr *)buf;
-                                        in_typematch = in_icmp6->icmp6_type == ICMP6_ECHO_REPLY ? true : false;
+                                        in_type = in_icmp6->icmp6_type;
+                                        in_typematch = in_icmp6->icmp6_type == expect_icmptype ? true : false;
+                                        if (expect_icmptype == ICMP6_ECHO_REQUEST && in_typematch) {
+                                          // FIXME
+                                        }
                                         in_id = ntohs(in_icmp6->icmp6_id);
                                         in_seq = ntohs(in_icmp6->icmp6_seq);
                                         data = (unsigned char *)(in_icmp6 + 1);
@@ -455,7 +487,7 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                 } else {
                         memcpy(&started, data, sizeof(int64_t));
                         double response = (double)(stopped - started) / 1000.; // Convert microseconds to milliseconds
-                        DEBUG("Ping response for %s %d/%d succeeded -- received id=%d sequence=%d response_time=%s\n", hostname, retry, maxretries, in_id, in_seq, Str_milliToTime(response, (char[23]){}));
+                        DEBUG("Ping response for %s %d/%d succeeded -- received type=%d id=%d sequence=%d response_time=%s src=%s\n", hostname, retry, maxretries, in_type, in_id, in_seq, Str_milliToTime(response, (char[23]){}), str_src_addr);
                         return response; // Wait for one response only
                 }
         }
@@ -464,7 +496,7 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
 }
 
 
-double icmp_echo(const char *hostname, Socket_Family family, Outgoing_T *outgoing, int size, int timeout, int maxretries) {
+double icmp_echo(const char *hostname, Socket_Family family, Outgoing_T *outgoing, int size, int timeout, int maxretries, int ip_ttl, u_char expect_icmptype) {
         ASSERT(hostname);
         ASSERT(size > 0);
         double response = -1.;
@@ -513,11 +545,11 @@ double icmp_echo(const char *hostname, Socket_Family family, Outgoing_T *outgoin
                                 if (outgoing->ip && bind(s, (struct sockaddr *)&(outgoing->addr), outgoing->addrlen) < 0) {
                                         LogError("Cannot bind to outgoing address -- %s\n", STRERROR);
                                 } else {
-                                        _setPingOptions(s, addr);
+                                        _setPingOptions(s, addr, ip_ttl);
                                         uint16_t id = getpid() & 0xFFFF;
                                         for (int retry = 1; retry <= maxretries && ! (Run.flags & Run_Stopped); retry++) {
                                                 int64_t started = Time_micro();
-                                                if (_sendPing(hostname, s, addr, size, retry, maxretries, id, started) && (response = _receivePing(hostname, s, addr, retry, maxretries, id, started, timeout)) >= 0.) {
+                                                if (_sendPing(hostname, s, addr, size, retry, maxretries, id, started) && (response = _receivePing(hostname, s, addr, retry, maxretries, id, started, timeout, expect_icmptype)) >= 0.) {
                                                         // Success
                                                         break;
                                                 }

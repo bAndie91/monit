@@ -741,6 +741,8 @@ typedef struct myicmp {
         int size;                                     /**< ICMP echo requests size */
         int count;                                   /**< ICMP echo requests count */
         int timeout;         /**< The timeout in milliseconds to wait for response */
+        int ttl;                            /**< IP TTL header set for ICMP packet */
+        u_char expect_type; /**< ICMP Type which we expect to receive as reply to Echo Request */
         Connection_State is_available;    /**< Flag for the server is availability */
         Socket_Family family;                 /**< ICMP family used for connection */
         double response;                         /**< ICMP ECHO response time [ms] */

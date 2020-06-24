@@ -1508,7 +1508,7 @@ State_Type check_remote_host(Service_T s) {
                 Service_EventAction_UniqId_T seauid_icmp = {Service_EventAction_UniqId_Icmp, Util_EventAction_Hash_Icmp(icmp)};
                 switch (icmp->type) {
                         case ICMP_ECHO:
-                                icmp->response = icmp_echo(s->path, icmp->family, &(icmp->outgoing), icmp->size, icmp->timeout, icmp->count);
+                                icmp->response = icmp_echo(s->path, icmp->family, &(icmp->outgoing), icmp->size, icmp->timeout, icmp->count, icmp->ttl, icmp->expect_type);
                                 if (icmp->response == -2) {
                                         icmp->is_available = Connection_Init;
 #ifdef SOLARIS

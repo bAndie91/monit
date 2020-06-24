@@ -368,6 +368,9 @@ ping              { return PING; }
 ping4             { return PING4; }
 ping6             { return PING6; }
 echo              { return ICMPECHO; }
+ttl               { return TTL; }
+echo_reply        { return ECHO_REPLY; }
+ttl_exceeded      { return TTL_EXCEEDED; }
 send              { return SEND; }
 expect            { return EXPECT; }
 expectbuffer      { return EXPECTBUFFER; }

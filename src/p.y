@@ -109,6 +109,10 @@
 #include <netinet/ip_icmp.h>
 #endif
 
+#ifdef HAVE_NETINET_ICMP6_H
+#include <netinet/icmp6.h>
+#endif
+
 #ifdef HAVE_REGEX_H
 #include <regex.h>
 #endif
@@ -344,6 +348,7 @@ static int verifyMaxForward(int);
 %token BYTE KILOBYTE MEGABYTE GIGABYTE
 %token INODE SPACE TFREE PERMISSION SIZE MATCH NOT IGNORE ACTION UPTIME
 %token EXEC UNMONITOR PING PING4 PING6 ICMP ICMPECHO NONEXIST EXIST INVALID DATA RECOVERED PASSED SUCCEEDED
+%token ECHO_REPLY TTL TTL_EXCEEDED
 %token URL CONTENT PID PPID FSFLAG
 %token REGISTER CREDENTIALS
 %token <url> URLOBJECT
@@ -1449,6 +1454,8 @@ icmpopt         : icmpcount
                 | icmpsize
                 | icmptimeout
                 | icmpoutgoing
+                | icmpttl
+                | icmpexpectopts
                 ;
 
 host            : /* EMPTY */ {
@@ -1896,6 +1903,21 @@ icmptimeout     : TIMEOUT NUMBER SECOND {
 
 icmpoutgoing    : ADDRESS STRING {
                         _parseOutgoingAddress($<string>2, &(icmpset.outgoing));
+                  }
+                ;
+
+icmpttl         : TTL NUMBER {
+                       icmpset.ttl = $<number>2;
+                  }
+                ;
+
+icmpexpectopts  : EXPECT icmpexpecttype;
+
+icmpexpecttype  : ECHO_REPLY {
+                       icmpset.expect_type = ICMP_ECHOREPLY;
+                  }
+                | TTL_EXCEEDED {
+                       icmpset.expect_type = ICMP_TIME_EXCEEDED;
                   }
                 ;
 
@@ -3871,6 +3893,12 @@ static void addicmp(Icmp_T is) {
         icmp->timeout      = is->timeout;
         icmp->action       = is->action;
         icmp->outgoing     = is->outgoing;
+        icmp->ttl          = is->ttl;
+        if (icmp->family == Socket_Ip6) {
+          if (is->expect_type == ICMP_ECHOREPLY) is->expect_type = ICMP6_ECHO_REPLY;
+          if (is->expect_type == ICMP_TIME_EXCEEDED) is->expect_type = ICMP6_TIME_EXCEEDED;
+        }
+        icmp->expect_type  = is->expect_type;
         icmp->is_available = Connection_Init;
         icmp->response     = -1;
 
@@ -4677,6 +4705,8 @@ static void reset_icmpset() {
         icmpset.size = ICMP_SIZE;
         icmpset.count = ICMP_ATTEMPT_COUNT;
         icmpset.timeout = Run.limits.networkTimeout;
+        icmpset.ttl = 255;
+        icmpset.expect_type = ICMP_ECHOREPLY;
         icmpset.action = NULL;
 }
 

@@ -84,6 +84,6 @@ int create_server_socket_unix(const char *path, int backlog, char error[STRLEN])
  * @param count How many pings to send
  * @return response time on succes, -1 on error
  */
-double icmp_echo(const char *hostname, Socket_Family family, Outgoing_T *outgoing, int size, int timeout, int count);
+double icmp_echo(const char *hostname, Socket_Family family, Outgoing_T *outgoing, int size, int timeout, int count, int ip_ttl, u_char expect_icmptype);
 
 #endif
