@@ -4701,6 +4701,7 @@ static void reset_filesystemset() {
  * Reset the ICMP set to default values
  */
 static void reset_icmpset() {
+        memset(&icmpset, 0, sizeof(struct myicmp));
         icmpset.type = ICMP_ECHO;
         icmpset.size = ICMP_SIZE;
         icmpset.count = ICMP_ATTEMPT_COUNT;
