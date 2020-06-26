@@ -115,6 +115,10 @@ struct icmp_filter {
 #include <netinet/icmp6.h>
 #endif
 
+#ifdef HAVE_IPV6
+#include <netinet/ip6.h>
+#endif
+
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -315,7 +319,7 @@ static void _setPingOptions(int socket, struct addrinfo *addr, int ip_ttl) {
         struct icmp6_filter filter;
         ICMP6_FILTER_SETBLOCKALL(&filter);
         ICMP6_FILTER_SETPASS(ICMP6_ECHO_REPLY, &filter);
-        ICMP6_FILTER_SETPASS(ICMP6_TIME_EXCEED_TRANSIT, &filter);  // TODO: make it conditional to that we expect TTL Exceeding or not
+        ICMP6_FILTER_SETPASS(ICMP6_TIME_EXCEEDED, &filter);  // TODO: make it conditional to that we expect TTL Exceeding or not
 #endif
         struct icmp_filter filter4;
         filter4.data = ~((1<<ICMP_TIME_EXCEEDED)|(1<<ICMP_ECHOREPLY));
@@ -402,6 +406,7 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
         struct icmp *in_icmp4;
         struct ip *in_iphdr4;
 #ifdef HAVE_IPV6
+        struct ip6_hdr *in_iphdr6;
         struct icmp6_hdr *in_icmp6;
 #endif
         ssize_t n;
@@ -459,13 +464,17 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                                         in_addr_sinaddr = &((struct sockaddr_in6 *)&in_addr)->sin6_addr;
                                         inet_ntop(addr->ai_family, in_addr_sinaddr, str_src_addr, INET6_ADDRSTRLEN);
                                         
-                                        in_addrmatch = memcmp(in_addr_sinaddr, &((struct sockaddr_in6 *)(addr->ai_addr))->sin6_addr, sizeof(struct in6_addr)) ? false : true;
                                         in_icmp6 = (struct icmp6_hdr *)buf;
                                         in_type = in_icmp6->icmp6_type;
                                         in_typematch = in_icmp6->icmp6_type == expect_icmptype ? true : false;
-                                        if (expect_icmptype == ICMP6_ECHO_REQUEST && in_typematch) {
-                                          // FIXME
+                                        if (expect_icmptype == ICMP6_TIME_EXCEEDED && in_typematch) {
+                                          in_iphdr6 = (struct ip6_hdr *)(in_icmp6 + 1);
+                                          // FIXME: assuming there are no IPv6 Extension Headers here, however there can be
+                                          #define IPV6_HEADER_LENGTH 40
+                                          in_icmp6 = (struct icmp6_hdr *)((unsigned char *)in_iphdr6 + IPV6_HEADER_LENGTH);
+                                          in_addr_sinaddr = &(in_iphdr6->ip6_dst);
                                         }
+                                        in_addrmatch = memcmp(in_addr_sinaddr, &((struct sockaddr_in6 *)(addr->ai_addr))->sin6_addr, sizeof(struct in6_addr)) ? false : true;
                                         in_id = ntohs(in_icmp6->icmp6_id);
                                         in_seq = ntohs(in_icmp6->icmp6_seq);
                                         data = (unsigned char *)(in_icmp6 + 1);
