@@ -2681,7 +2681,7 @@ and if the test should fail, we assume that the connection to the
 host is down and Monit will I<not> continue with any subsequent port
 tests.
 
-TTl <hops> sets the TTL in IP packets. Default is 255.
+TTL <hops> sets the TTL in IP packets. Default is 255.
 
 Default EXPECT is ECHO_REPLY which is an ordinary pong response. Set
 TTL_EXCEEDED with low TTL if you want to check the intermediate path

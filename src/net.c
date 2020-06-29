@@ -530,8 +530,10 @@ double icmp_echo(const char *hostname, Socket_Family family, Outgoing_T *outgoin
         ASSERT(size > 0);
         double response = -1.;
         struct addrinfo *result, hints = {
+                /* getaddrinfo() returns an address n-times for each protocol and socket type, get only one to avoid unneccessary rounds */
+                .ai_socktype = SOCK_RAW,
 #ifdef AI_ADDRCONFIG
-                .ai_flags = AI_ADDRCONFIG
+                .ai_flags = AI_ADDRCONFIG,
 #endif
         };
         switch (family) {
