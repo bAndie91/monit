@@ -447,11 +447,23 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                                         
                                         in_iphdr4 = (struct ip *)buf;
                                         in_icmp4 = (struct icmp *)(buf + in_iphdr4->ip_hl * 4);
+                                        if(in_icmp4 >= buf + n - sizeof(struct icmp)) {
+                                          LogError("ICMP packet does not fit in buffer with IP header length: %d\n", in_iphdr4->ip_hl);
+                                          return -1.;
+                                        }
                                         in_type = in_icmp4->icmp_type;
                                         in_typematch = in_icmp4->icmp_type == expect_icmptype ? true : false;
                                         if (expect_icmptype == ICMP_TIME_EXCEEDED && in_typematch) {
                                           in_iphdr4 = &(in_icmp4->icmp_dun.id_ip.idi_ip);
+                                          if(in_iphdr4 >= buf + n - sizeof(struct ip)) {
+                                            LogError("IP packet in ICMP packet does not fit in buffer\n");
+                                            return -1.;
+                                          }
                                           in_icmp4 = (struct icmp *)((unsigned char *)in_iphdr4 + in_iphdr4->ip_hl * 4);
+                                          if(in_icmp4 >= buf + n - sizeof(struct icmp)) {
+                                            LogError("ICMP packet encapsulated in ICMP packet does not fit in buffer\n");
+                                            return -1.;
+                                          }
                                           in_addr_sinaddr = &(in_iphdr4->ip_dst);
                                         }
                                         in_addrmatch = memcmp(in_addr_sinaddr, &((struct sockaddr_in *)(addr->ai_addr))->sin_addr, sizeof(struct in_addr)) ? false : true;
@@ -469,9 +481,17 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                                         in_typematch = in_icmp6->icmp6_type == expect_icmptype ? true : false;
                                         if (expect_icmptype == ICMP6_TIME_EXCEEDED && in_typematch) {
                                           in_iphdr6 = (struct ip6_hdr *)(in_icmp6 + 1);
+                                          if(in_iphdr6 >= buf + n - sizeof(struct ip6_hdr)) {
+                                            LogError("IPv6 packet encapsulated in ICMPv6 packet does not fit in buffer\n");
+                                            return -1.;
+                                          }
                                           // FIXME: assuming there are no IPv6 Extension Headers here, however there can be
                                           #define IPV6_HEADER_LENGTH 40
                                           in_icmp6 = (struct icmp6_hdr *)((unsigned char *)in_iphdr6 + IPV6_HEADER_LENGTH);
+                                          if(in_icmp6 >= buf + n - sizeof(struct icmp6_hdr)) {
+                                            LogError("ICMPv6 packet encapsulated in ICMPv6 packet does not fit in buffer\n");
+                                            return -1.;
+                                          }
                                           in_addr_sinaddr = &(in_iphdr6->ip6_dst);
                                         }
                                         in_addrmatch = memcmp(in_addr_sinaddr, &((struct sockaddr_in6 *)(addr->ai_addr))->sin6_addr, sizeof(struct in6_addr)) ? false : true;
