@@ -3102,6 +3102,7 @@ static Service_T createservice(Service_Type type, char *name, char *value, State
         current->name     = name;
         current->check    = check;
         current->path     = value;
+        current->parallel_validation_rv = State_Uninitialized;
 
         /* Initialize general event handlers */
         addeventaction(&(current)->action_DATA,     Action_Alert,     Action_Alert);

@@ -147,7 +147,7 @@ static int _fill(T S, int timeout) {
                 n = Ssl_read(S->ssl, S->buffer + S->length, RBUFFER_SIZE - S->length, timeout);
         else
 #endif
-                n = (int)Net_read(S->socket, S->buffer + S->length,  RBUFFER_SIZE - S->length, timeout);
+                n = (int)Net_read_parallelize(S->socket, S->buffer + S->length,  RBUFFER_SIZE - S->length, timeout);
         if (n > 0)
                 S->length += n;
         else if (n < 0)

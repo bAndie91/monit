@@ -253,6 +253,8 @@ static void do_init() {
          */
         Mutex_init(Run.mutex);
 
+        Mutex_init(Run.parallelize);
+
         /*
          * Initialize heartbeat mutex and condition
          */
@@ -576,7 +578,11 @@ static void do_default() {
 
                         /* In the case that there is no pending action then sleep */
                         if (! (Run.flags & Run_ActionPending) && ! (Run.flags & Run_Stopped))
+                        {
+                                Mutex_unlock(Run.parallelize);
                                 sleep(Run.polltime);
+                                Mutex_lock(Run.parallelize);
+                        }
 
                         if (Run.flags & Run_DoWakeup) {
                                 Run.flags &= ~Run_DoWakeup;
@@ -910,4 +916,17 @@ static RETSIGTYPE do_wakeup(int sig) {
  we may have created and not waited on, so we do not create any zombie processes at exit */
 static void waitforchildren(void) {
         while (waitpid(-1, NULL, WNOHANG) > 0) ;
+}
+
+
+int Net_canRead_parallelize(int socket, time_t milliseconds) {
+	int rv;
+	Mutex_unlock(Run.parallelize);
+	rv = Net_canRead(socket, milliseconds);
+	Mutex_lock(Run.parallelize);
+	return rv;
+}
+
+int Net_read_parallelize(int socket, void *buffer, size_t size, time_t timeout) {
+	return Net_read_withCanReadCallback(socket, buffer, size, timeout, Net_canRead_parallelize);
 }

@@ -103,7 +103,7 @@ int Net_canWrite(int socket, time_t milliseconds) {
 }
 
 
-ssize_t Net_read(int socket, void *buffer, size_t size, time_t timeout) {
+ssize_t Net_read_withCanReadCallback(int socket, void *buffer, size_t size, time_t timeout, int(canReadCallback)(int, time_t)) {
 	ssize_t n = 0;
         if (size > 0) {
                 do {
@@ -118,6 +118,10 @@ ssize_t Net_read(int socket, void *buffer, size_t size, time_t timeout) {
                 }
         }
 	return n;
+}
+
+ssize_t Net_read(int socket, void *buffer, size_t size, time_t timeout) {
+	return Net_read_withCanReadCallback(socket, buffer, size, timeout, Net_canRead);
 }
 
 

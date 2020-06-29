@@ -592,7 +592,7 @@ void Ssl_connect(T C, int socket, int timeout, const char *name) {
                                 case SSL_ERROR_NONE:
                                         break;
                                 case SSL_ERROR_WANT_READ:
-                                        retry = _retry(C->socket, &timeout, Net_canRead);
+                                        retry = _retry(C->socket, &timeout, Net_canRead_parallelize);
                                         break;
                                 case SSL_ERROR_WANT_WRITE:
                                         retry = _retry(C->socket, &timeout, Net_canWrite);
@@ -625,7 +625,7 @@ int Ssl_write(T C, void *b, int size, int timeout) {
                                 case SSL_ERROR_WANT_READ:
                                         n = 0;
                                         errno = EWOULDBLOCK;
-                                        retry = _retry(C->socket, &timeout, Net_canRead);
+                                        retry = _retry(C->socket, &timeout, Net_canRead_parallelize);
                                         break;
                                 case SSL_ERROR_WANT_WRITE:
                                         n = 0;
@@ -666,7 +666,7 @@ int Ssl_read(T C, void *b, int size, int timeout) {
                                 case SSL_ERROR_WANT_READ:
                                         n = 0;
                                         errno = EWOULDBLOCK;
-                                        retry = _retry(C->socket, &timeout, Net_canRead);
+                                        retry = _retry(C->socket, &timeout, Net_canRead_parallelize);
                                         break;
                                 case SSL_ERROR_WANT_WRITE:
                                         n = 0;
@@ -894,7 +894,7 @@ boolean_t SslServer_accept(T C, int socket, int timeout) {
                                 case SSL_ERROR_NONE:
                                         break;
                                 case SSL_ERROR_WANT_READ:
-                                        retry = _retry(C->socket, &timeout, Net_canRead);
+                                        retry = _retry(C->socket, &timeout, Net_canRead_parallelize);
                                         break;
                                 case SSL_ERROR_WANT_WRITE:
                                         retry = _retry(C->socket, &timeout, Net_canWrite);

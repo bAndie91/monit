@@ -1078,6 +1078,33 @@ static boolean_t _doScheduledAction(Service_T s) {
 }
 
 
+void * validate_parallel_service(Service_T s)
+{
+	Mutex_lock(Run.parallelize);
+	s->parallel_validation_rv = s->check(s);
+	Mutex_unlock(Run.parallelize);
+}
+
+State_Type validate_parallel(Service_T s)
+{
+	pthread_t thread;
+	State_Type rv;
+	
+	if(s->parallel_validation_rv == State_Uninitialized)
+	{
+		s->parallel_validation_rv = State_InProgress;
+		Mutex_unlock(Run.parallelize);
+		pthread_create(&thread, NULL, (void*(*)(void*))validate_parallel_service, s);
+		Mutex_lock(Run.parallelize);
+	}
+	else if(s->parallel_validation_rv != State_InProgress)
+	{
+		rv = s->parallel_validation_rv;
+		s->parallel_validation_rv = State_Uninitialized;
+	}
+	return rv;
+}
+
 /* ---------------------------------------------------------------- Public */
 
 
@@ -1110,7 +1137,7 @@ int validate() {
                 if (! _doScheduledAction(s) && s->monitor && (s->type == Service_Program || s->mode & Monitor_Forced || ! _checkSkip(s))) {
                         _checkTimeout(s); // Can disable monitoring => need to check s->monitor again
                         if (s->monitor) {
-                                State_Type state = s->check(s);
+                                State_Type state = validate_parallel(s);
                                 s->mode &= ~Monitor_Forced;
                                 if (state != State_Init && s->monitor != Monitor_Not) // The monitoring can be disabled by some matching rule in s->check so we have to check again before setting to Monitor_Yes
                                         s->monitor = Monitor_Yes;

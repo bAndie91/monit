@@ -42,7 +42,7 @@ void check_default(Socket_T socket) {
                 char token[1] = {};
                 int s = Socket_getSocket(socket);
                 Net_write(s, token, 1, 0);
-                if (Net_read(s, token, 1, 1200) < 0) {
+                if (Net_read_parallelize(s, token, 1, 1200) < 0) {
                         switch (errno) {
                                 case ECONNREFUSED:
                                         THROW(IOException, "%s", STRERROR);

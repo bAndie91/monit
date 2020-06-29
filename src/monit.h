@@ -203,6 +203,8 @@ typedef enum {
 
 
 typedef enum {
+        State_Uninitialized = -2,
+        State_InProgress = -1,
         State_Succeeded = 0,
         State_Failed,
         State_Changed,
@@ -1165,6 +1167,7 @@ typedef struct myservice {
 
         /** For internal use */
         Mutex_T mutex;                  /**< Mutex used for action synchronization */
+        State_Type parallel_validation_rv;
         struct myservice *next;                         /**< next service in chain */
         struct myservice *next_conf;      /**< next service according to conf file */
         struct myservice *next_depend;           /**< next depend service in chain */
@@ -1251,6 +1254,7 @@ struct myrun {
         } MailFormat;
 
         Mutex_T mutex;            /**< Mutex used for service data synchronization */
+        Mutex_T parallelize;
 };
 
 
@@ -1335,5 +1339,8 @@ int  check_URL(Service_T s);
 void status_xml(StringBuffer_T, Event_T, int, const char *);
 void status_json(StringBuffer_T, Event_T, int, const char *);
 boolean_t  do_wakeupcall();
+
+int Net_canRead_parallelize(int, time_t);
+int Net_read_parallelize(int, void *, size_t, time_t);
 
 #endif
