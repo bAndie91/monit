@@ -203,13 +203,13 @@ typedef enum {
 
 
 typedef enum {
-        State_Uninitialized = -2,
-        State_InProgress = -1,
         State_Succeeded = 0,
         State_Failed,
         State_Changed,
         State_ChangedNot,
-        State_Init
+        State_Init,
+        State_Uninitialized,  // used by parallel validation
+        State_InProgress  // used by parallel validation
 } __attribute__((__packed__)) State_Type;
 
 

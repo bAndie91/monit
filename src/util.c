@@ -1110,7 +1110,8 @@ void Util_printService(Service_T s) {
                 }
 #endif
                 StringBuffer_clear(buf);
-                printf(" %-20s = %s\n", "Port", StringBuffer_toString(Util_printRule(buf, o->action, StringBuffer_toString(buf2))));
+//FIXME: it causes double free fault:
+//                printf(" %-20s = %s\n", "Port", StringBuffer_toString(Util_printRule(buf, o->action, StringBuffer_toString(buf2))));
                 StringBuffer_free(&buf2);
         }
 

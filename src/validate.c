@@ -1030,22 +1030,24 @@ static boolean_t _incron(Service_T s, time_t now) {
 static boolean_t _checkSkip(Service_T s) {
         ASSERT(s);
         time_t now = Time_now();
-        if (s->every.type == Every_SkipCycles) {
-                s->every.spec.cycle.counter++;
-                if (s->every.spec.cycle.counter < s->every.spec.cycle.number) {
+        if (s->parallel_validation_rv != State_InProgress) {
+                if (s->every.type == Every_SkipCycles) {
+                        s->every.spec.cycle.counter++;
+                        if (s->every.spec.cycle.counter < s->every.spec.cycle.number) {
+                                // s->monitor |= Monitor_Waiting;
+                                DEBUG("'%s' test skipped as current cycle (%d) < every cycle (%d) \n", s->name, s->every.spec.cycle.counter, s->every.spec.cycle.number);
+                                return true;
+                        }
+                        s->every.spec.cycle.counter = 0;
+                } else if (s->every.type == Every_Cron && ! _incron(s, now)) {
                         // s->monitor |= Monitor_Waiting;
-                        DEBUG("'%s' test skipped as current cycle (%d) < every cycle (%d) \n", s->name, s->every.spec.cycle.counter, s->every.spec.cycle.number);
+                        DEBUG("'%s' test skipped as current time (%lld) does not match every's cron spec \"%s\"\n", s->name, (long long)now, s->every.spec.cron);
+                        return true;
+                } else if (s->every.type == Every_NotInCron && Time_incron(s->every.spec.cron, now)) {
+                        // s->monitor |= Monitor_Waiting;
+                        DEBUG("'%s' test skipped as current time (%lld) matches every's cron spec \"not %s\"\n", s->name, (long long)now, s->every.spec.cron);
                         return true;
                 }
-                s->every.spec.cycle.counter = 0;
-        } else if (s->every.type == Every_Cron && ! _incron(s, now)) {
-                // s->monitor |= Monitor_Waiting;
-                DEBUG("'%s' test skipped as current time (%lld) does not match every's cron spec \"%s\"\n", s->name, (long long)now, s->every.spec.cron);
-                return true;
-        } else if (s->every.type == Every_NotInCron && Time_incron(s->every.spec.cron, now)) {
-                // s->monitor |= Monitor_Waiting;
-                DEBUG("'%s' test skipped as current time (%lld) matches every's cron spec \"not %s\"\n", s->name, (long long)now, s->every.spec.cron);
-                return true;
         }
         s->monitor &= ~Monitor_Waiting;
         // Skip if parent is not initialized
@@ -1093,14 +1095,21 @@ State_Type validate_parallel(Service_T s)
 	if(s->parallel_validation_rv == State_Uninitialized)
 	{
 		s->parallel_validation_rv = State_InProgress;
+		DEBUG("Start parallel validation on '%s'\n", s->name);
 		Mutex_unlock(Run.parallelize);
 		pthread_create(&thread, NULL, (void*(*)(void*))validate_parallel_service, s);
 		Mutex_lock(Run.parallelize);
+		rv = State_Init;
 	}
 	else if(s->parallel_validation_rv != State_InProgress)
 	{
 		rv = s->parallel_validation_rv;
 		s->parallel_validation_rv = State_Uninitialized;
+		DEBUG("Parallel validation on '%s' finished with code %d\n", s->name, rv);
+	}
+	else
+	{
+		DEBUG("Parallel validation on '%s' is in progress\n", s->name);
 	}
 	return rv;
 }
@@ -1143,8 +1152,9 @@ int validate() {
                                         s->monitor = Monitor_Yes;
                                 if (state == State_Failed)
                                         errors++;
+                                if (state != State_Uninitialized && state != State_InProgress)
+                                        gettimeofday(&s->collected, NULL);
                         }
-                        gettimeofday(&s->collected, NULL);
                 }
         }
         return errors;
