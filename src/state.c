@@ -199,7 +199,7 @@ static void _updateStart(Service_T S, int nstart, int ncycle) {
 static void _updateMonitor(Service_T S, Monitor_State monitor) {
         if (systeminfo.booted == booted || S->onreboot == Onreboot_Laststate) {
                 // Monit reload or restart within the same boot session OR persistent state => restore the monitoring state
-                if (monitor == Monitor_Not)
+                if ((monitor & Monitor_Yes) == 0)
                         S->monitor = Monitor_Not;
                 else if (S->monitor == Monitor_Not)
                         S->monitor = Monitor_Init;

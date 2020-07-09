@@ -1053,8 +1053,8 @@ static boolean_t _checkSkip(Service_T s) {
         // Skip if parent is not initialized
         for (Dependant_T d = s->dependantlist; d; d = d->next ) {
                 Service_T parent = Util_getService(d->dependant);
-                if (parent->monitor != Monitor_Yes) {
-                        DEBUG("'%s' test skipped as required service '%s' is %s\n", s->name, parent->name, parent->monitor == Monitor_Init ? "initializing" : "not monitored");
+                if ((parent->monitor & Monitor_Yes) == 0 || (parent->monitor & Monitor_Init) != 0) {
+                        DEBUG("'%s' test skipped as required service '%s' is %s\n", s->name, parent->name, (parent->monitor & Monitor_Init) ? "initializing" : "not monitored");
                         return true;
                 } else if (parent->error) {
                         DEBUG("'%s' test skipped as required service '%s' has errors\n", s->name, parent->name);
@@ -1172,8 +1172,10 @@ int validate() {
                                         s->monitor = Monitor_Yes;
                                 if (state == State_Failed)
                                         errors++;
-                                if (state != State_Init && state != State_Uninitialized && state != State_InProgress)
+                                if (state != State_Init && state != State_Uninitialized && state != State_InProgress) {
                                         gettimeofday(&s->collected, NULL);
+                                        s->monitor &= ~Monitor_Waiting;
+                                }
                                 if (state == State_InProgress)
                                         s->monitor |= Monitor_Waiting;
                         }

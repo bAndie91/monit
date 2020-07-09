@@ -1820,7 +1820,7 @@ boolean_t Util_evalDoubleQExpression(Operator_Type operator, double left, double
 
 void Util_monitorSet(Service_T s) {
         ASSERT(s);
-        if (s->monitor == Monitor_Not) {
+        if ((s->monitor & Monitor_Yes) == 0) {
                 s->monitor = Monitor_Init;
                 DEBUG("'%s' monitoring enabled\n", s->name);
                 State_save();

@@ -229,7 +229,7 @@ static boolean_t _doStart(Service_T s) {
         for (Dependant_T d = s->dependantlist; d; d = d->next ) {
                 Service_T parent = Util_getService(d->dependant);
                 ASSERT(parent);
-                if (parent->monitor != Monitor_Yes || parent->error) {
+                if ((parent->monitor & Monitor_Yes) == 0 || parent->error) {
                         if (_doStart(parent)) {
                                 State_Type state = _check(parent);
                                 if (state != State_Failed && state != State_Init)

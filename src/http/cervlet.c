@@ -600,7 +600,7 @@ static void do_head(HttpRequest req, HttpResponse res, const char *path, const c
         	IF_SERVICE_IS_NOT_IN_REQUESTED_GROUP_THEN_NEXT(s);
         	IF_SERVICE_IS_UP_BUT_REQUESTED_FAILS_THEN_NEXT(s);
         	all++;
-        	if(s->monitor != Monitor_Not && !(s->monitor & Monitor_Init) && s->error == 0) up++;
+        	if((s->monitor & Monitor_Yes) != 0 && (s->monitor & Monitor_Init) == 0 && s->error == 0) up++;
         }
         StringBuffer_append(res->outputbuffer,
                             "<!DOCTYPE html>"\
@@ -732,6 +732,7 @@ static void do_groups(HttpRequest req, HttpResponse res) {
                 for (list_t m = sg->members->head; m; m = m->next) {
                         Service_T s = m->e;
                         if (!(s->monitor == Monitor_Not || s->monitor & Monitor_Init || s->error))
+                        if ((s->monitor & Monitor_Yes) != 0 && (s->monitor & Monitor_Init) == 0 && s->error == 0)
                                 up++;
                         total++;
                 }
@@ -2573,12 +2574,12 @@ static void _printReport(HttpRequest req, HttpResponse res) {
                         3, total);
         } else if (Str_isEqual(type, "up")) {
                 for (Service_T s = servicelist; s; s = s->next)
-                        if ((!stringGroup || _is_in_group(s, stringGroup)) && s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && ! s->error)
+                        if ((!stringGroup || _is_in_group(s, stringGroup)) && (s->monitor & Monitor_Yes) != 0 && (s->monitor & Monitor_Init) == 0 && s->error == 0)
                                 count++;
                 StringBuffer_append(res->outputbuffer, "%d\n", count);
         } else if (Str_isEqual(type, "down")) {
                 for (Service_T s = servicelist; s; s = s->next)
-                        if ((!stringGroup || _is_in_group(s, stringGroup)) && s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && s->error)
+                        if ((!stringGroup || _is_in_group(s, stringGroup)) && (s->monitor & Monitor_Yes) != 0 && (s->monitor & Monitor_Init) == 0 && s->error != 0)
                                 count++;
                 StringBuffer_append(res->outputbuffer, "%d\n", count);
         } else if (Str_startsWith(type, "initiali")) { // allow 'initiali(s|z)ing'
