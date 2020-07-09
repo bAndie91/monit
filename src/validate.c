@@ -1034,22 +1034,22 @@ static boolean_t _checkSkip(Service_T s) {
                 if (s->every.type == Every_SkipCycles) {
                         s->every.spec.cycle.counter++;
                         if (s->every.spec.cycle.counter < s->every.spec.cycle.number) {
-                                // s->monitor |= Monitor_Waiting;
+                                // Monitor_Waiting means else anymore // s->monitor |= Monitor_Waiting;
                                 DEBUG("'%s' test skipped as current cycle (%d) < every cycle (%d) \n", s->name, s->every.spec.cycle.counter, s->every.spec.cycle.number);
                                 return true;
                         }
                         s->every.spec.cycle.counter = 0;
                 } else if (s->every.type == Every_Cron && ! _incron(s, now)) {
-                        // s->monitor |= Monitor_Waiting;
+                        // Monitor_Waiting means else anymore // s->monitor |= Monitor_Waiting;
                         DEBUG("'%s' test skipped as current time (%lld) does not match every's cron spec \"%s\"\n", s->name, (long long)now, s->every.spec.cron);
                         return true;
                 } else if (s->every.type == Every_NotInCron && Time_incron(s->every.spec.cron, now)) {
-                        // s->monitor |= Monitor_Waiting;
+                        // Monitor_Waiting means else anymore // s->monitor |= Monitor_Waiting;
                         DEBUG("'%s' test skipped as current time (%lld) matches every's cron spec \"not %s\"\n", s->name, (long long)now, s->every.spec.cron);
                         return true;
                 }
         }
-        s->monitor &= ~Monitor_Waiting;
+        // Monitor_Waiting means else anymore // s->monitor &= ~Monitor_Waiting;
         // Skip if parent is not initialized
         for (Dependant_T d = s->dependantlist; d; d = d->next ) {
                 Service_T parent = Util_getService(d->dependant);
@@ -1089,17 +1089,36 @@ void * validate_parallel_service(Service_T s)
 
 State_Type validate_parallel(Service_T s)
 {
-	pthread_t thread;
-	State_Type rv;
+	pthread_t servicecheck_thr;
+	State_Type rv = State_Init;
+    sigset_t mask;
+    sigset_t save;
 	
 	if(s->parallel_validation_rv == State_Uninitialized)
 	{
 		s->parallel_validation_rv = State_InProgress;
 		DEBUG("Start parallel validation on '%s'\n", s->name);
+        
 		Mutex_unlock(Run.parallelize);
-		pthread_create(&thread, NULL, (void*(*)(void*))validate_parallel_service, s);
+        sigemptyset(&mask);
+        sigaddset(&mask, SIGHUP);
+        sigaddset(&mask, SIGINT);
+        sigaddset(&mask, SIGUSR1);
+        sigaddset(&mask, SIGTERM);
+        pthread_sigmask(SIG_BLOCK, &mask, &save);
+		
+		int thr_err = pthread_create(&servicecheck_thr, NULL, (void*(*)(void*))validate_parallel_service, s);
+		pthread_sigmask(SIG_SETMASK, &save, NULL);
+		pthread_detach(servicecheck_thr);
 		Mutex_lock(Run.parallelize);
-		rv = State_Init;
+		
+		if(thr_err != 0) {
+			LogError("Can not spawn thread -- %s\n", strerror(thr_err));
+			s->parallel_validation_rv = State_Uninitialized;
+			rv = State_Uninitialized;
+		} else {
+			rv = State_InProgress;
+		}
 	}
 	else if(s->parallel_validation_rv != State_InProgress)
 	{
@@ -1110,6 +1129,7 @@ State_Type validate_parallel(Service_T s)
 	else
 	{
 		DEBUG("Parallel validation on '%s' is in progress\n", s->name);
+		rv = State_InProgress;
 	}
 	return rv;
 }
@@ -1152,8 +1172,10 @@ int validate() {
                                         s->monitor = Monitor_Yes;
                                 if (state == State_Failed)
                                         errors++;
-                                if (state != State_Uninitialized && state != State_InProgress)
+                                if (state != State_Init && state != State_Uninitialized && state != State_InProgress)
                                         gettimeofday(&s->collected, NULL);
+                                if (state == State_InProgress)
+                                        s->monitor |= Monitor_Waiting;
                         }
                 }
         }
