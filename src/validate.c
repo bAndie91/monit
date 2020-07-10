@@ -1169,11 +1169,12 @@ int validate() {
                                 State_Type state = validate_parallel(s);
                                 s->mode &= ~Monitor_Forced;
                                 if (state != State_Init && s->monitor != Monitor_Not) // The monitoring can be disabled by some matching rule in s->check so we have to check again before setting to Monitor_Yes
-                                        s->monitor = Monitor_Yes;
+                                        s->monitor |= Monitor_Yes;
                                 if (state == State_Failed)
                                         errors++;
                                 if (state != State_Init && state != State_Uninitialized && state != State_InProgress) {
                                         gettimeofday(&s->collected, NULL);
+                                        s->monitor &= ~Monitor_Init;
                                         s->monitor &= ~Monitor_Waiting;
                                 }
                                 if (state == State_InProgress)
