@@ -1226,7 +1226,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
         if (s->every.type != Every_Cycle) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Check service</td><td>");
                 if (s->every.type == Every_SkipCycles)
-                        StringBuffer_append(res->outputbuffer, "every %d cycle", s->every.spec.cycle.number);
+                        StringBuffer_append(res->outputbuffer, "every %d cycle (%d sec)", s->every.spec.cycle.number, s->every.spec.cycle.number * Run.polltime);
                 else if (s->every.type == Every_Cron)
                         StringBuffer_append(res->outputbuffer, "every <code>\"%s\"</code>", s->every.spec.cron);
                 else if (s->every.type == Every_NotInCron)
